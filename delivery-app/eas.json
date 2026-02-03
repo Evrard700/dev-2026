@@ -1,0 +1,35 @@
+{
+  "cli": {
+    "version": ">= 3.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "RNMAPBOX_MAPS_DOWNLOAD_TOKEN": "sk.eyJ1IjoiZXZyYXJkNzAwIiwiYSI6ImNtbDQ4eXc3NzB6ankzZ3NkN2MwNnYwbzQifQ.ICBFBaFre54b2MVomhzHNA"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "RNMAPBOX_MAPS_DOWNLOAD_TOKEN": "sk.eyJ1IjoiZXZyYXJkNzAwIiwiYSI6ImNtbDQ4eXc3NzB6ankzZ3NkN2MwNnYwbzQifQ.ICBFBaFre54b2MVomhzHNA"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "RNMAPBOX_MAPS_DOWNLOAD_TOKEN": "sk.eyJ1IjoiZXZyYXJkNzAwIiwiYSI6ImNtbDQ4eXc3NzB6ankzZ3NkN2MwNnYwbzQifQ.ICBFBaFre54b2MVomhzHNA"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

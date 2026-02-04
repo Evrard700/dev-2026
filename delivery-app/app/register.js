@@ -321,33 +321,8 @@ export default function RegisterScreen() {
             opacity: formFade,
             transform: [{ translateY: formSlide }],
           }}>
-            {/* Mode selector */}
-            <View style={styles.modeContainer}>
-              <TouchableOpacity
-                style={[styles.modeCard, selectedMode === 'moto' && styles.modeCardActive]}
-                onPress={() => setSelectedMode('moto')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.modeIconBox, selectedMode === 'moto' && styles.modeIconBoxActive]}>
-                  {/* Moto icon */}
-                  <View style={styles.modeIconMoto}>
-                    <View style={[styles.motoIconWheel, selectedMode === 'moto' && styles.motoIconWheelActive]} />
-                    <View style={[styles.motoIconWheel, selectedMode === 'moto' && styles.motoIconWheelActive, { left: 22 }]} />
-                    <View style={[styles.motoIconBody, selectedMode === 'moto' && styles.motoIconBodyActive]} />
-                    <View style={[styles.motoIconRider, selectedMode === 'moto' && styles.motoIconRiderActive]} />
-                  </View>
-                </View>
-                <Text style={[styles.modeLabel, selectedMode === 'moto' && styles.modeLabelActive]}>MOTO</Text>
-                <Text style={styles.modeDesc}>Livreur individuel</Text>
-              </TouchableOpacity>
-
-              {/* B2B mode hidden for MVP testing */}
-            </View>
-
-            <Text style={styles.modeNote}>
-              Mode livreur individuel - Version test MVP
-            </Text>
-
+            {/* MVP: Mode selector hidden - MOTO only */}
+            
             {/* Form */}
             <View style={styles.formContainer}>
               <Text style={styles.label}>Email</Text>

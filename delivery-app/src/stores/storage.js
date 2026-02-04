@@ -14,6 +14,21 @@ async function getCurrentUserId() {
 
 // ============ MOTO CLIENTS - Supabase + Local Cache ============
 
+// Helper: Transform Supabase data to app format
+function transformClientFromSupabase(client) {
+  return {
+    id: client.id,
+    nom: client.name,
+    numero: client.phone,
+    adresse: client.address,
+    neighborhood: client.neighborhood,
+    latitude: client.lat,
+    longitude: client.lng,
+    googleLink: client.notes,
+    createdAt: client.created_at,
+  };
+}
+
 export async function getMotoClients() {
   try {
     const userId = await getCurrentUserId();
@@ -36,9 +51,12 @@ export async function getMotoClients() {
       return cached ? JSON.parse(cached) : [];
     }
 
+    // Transform to app format
+    const transformed = (data || []).map(transformClientFromSupabase);
+    
     // Update cache
-    await AsyncStorage.setItem(MOTO_CLIENTS_CACHE_KEY, JSON.stringify(data));
-    return data || [];
+    await AsyncStorage.setItem(MOTO_CLIENTS_CACHE_KEY, JSON.stringify(transformed));
+    return transformed;
   } catch (e) {
     console.error('Error getting moto clients:', e);
     // Fallback to cache
@@ -58,15 +76,16 @@ export async function addMotoClient(client) {
       throw new Error('User not authenticated');
     }
 
+    // Map old field names to new schema
     const clientData = {
       user_id: userId,
-      name: client.name,
-      phone: client.phone,
-      address: client.address,
+      name: client.nom || client.name,
+      phone: client.numero || client.phone,
+      address: client.adresse || client.address,
       neighborhood: client.neighborhood || null,
-      lat: client.lat || null,
-      lng: client.lng || null,
-      notes: client.notes || null,
+      lat: client.latitude || client.lat || null,
+      lng: client.longitude || client.lng || null,
+      notes: client.googleLink || client.notes || null,
     };
 
     const { data, error } = await supabase
@@ -152,6 +171,32 @@ export async function saveMotoClients(clients) {
 
 // ============ MOTO ORDERS - Supabase + Local Cache ============
 
+// Helper: Transform order from Supabase to app format
+function transformOrderFromSupabase(order) {
+  let extraData = { produit: '', quantite: '', photo: null };
+  try {
+    if (order.notes) {
+      extraData = JSON.parse(order.notes);
+    }
+  } catch (e) {
+    // If notes is not JSON, keep it as is
+  }
+
+  return {
+    id: order.id,
+    clientId: order.client_id,
+    clientNom: order.client_name,
+    clientNumero: order.client_phone,
+    clientAdresse: order.client_address,
+    produit: extraData.produit || '',
+    quantite: extraData.quantite || '',
+    prix: order.price,
+    photo: extraData.photo || null,
+    checked: order.status === 'delivered',
+    createdAt: order.created_at,
+  };
+}
+
 export async function getMotoOrders() {
   try {
     const userId = await getCurrentUserId();
@@ -174,9 +219,12 @@ export async function getMotoOrders() {
       return cached ? JSON.parse(cached) : [];
     }
 
+    // Transform to app format
+    const transformed = (data || []).map(transformOrderFromSupabase);
+
     // Update cache
-    await AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(data));
-    return data || [];
+    await AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(transformed));
+    return transformed;
   } catch (e) {
     console.error('Error getting moto orders:', e);
     // Fallback to cache
@@ -196,16 +244,23 @@ export async function addMotoOrder(order) {
       throw new Error('User not authenticated');
     }
 
+    // Store extra fields (produit, quantite, photo) in notes as JSON
+    const extraData = {
+      produit: order.produit || '',
+      quantite: order.quantite || '',
+      photo: order.photo || null,
+    };
+
     const orderData = {
       user_id: userId,
       client_id: order.clientId,
-      client_name: order.clientName,
-      client_address: order.clientAddress,
-      client_phone: order.clientPhone,
-      price: parseFloat(order.price),
-      status: order.status || 'pending',
-      notes: order.notes || null,
-      delivered_at: order.deliveredAt || null,
+      client_name: order.clientNom || order.clientName,
+      client_address: order.clientAdresse || order.clientAddress,
+      client_phone: order.clientNumero || order.clientPhone,
+      price: parseFloat(order.prix || order.price || 0),
+      status: order.checked ? 'delivered' : 'pending',
+      notes: JSON.stringify(extraData),
+      delivered_at: order.checked ? new Date().toISOString() : null,
     };
 
     const { data, error } = await supabase
@@ -233,8 +288,17 @@ export async function updateMotoOrder(orderId, updates) {
     }
 
     const updateData = {};
+    
+    // Handle checked field (maps to status + delivered_at)
+    if (updates.checked !== undefined) {
+      updateData.status = updates.checked ? 'delivered' : 'pending';
+      updateData.delivered_at = updates.checked ? new Date().toISOString() : null;
+    }
+    
     if (updates.status !== undefined) updateData.status = updates.status;
-    if (updates.price !== undefined) updateData.price = parseFloat(updates.price);
+    if (updates.price !== undefined || updates.prix !== undefined) {
+      updateData.price = parseFloat(updates.price || updates.prix);
+    }
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
     if (updates.deliveredAt !== undefined || updates.delivered_at !== undefined) {
       updateData.delivered_at = updates.deliveredAt || updates.delivered_at || null;

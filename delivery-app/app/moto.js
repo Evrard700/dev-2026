@@ -283,19 +283,37 @@ export default function MotoScreen() {
   }, []);
 
   const handleAddOrder = useCallback(async (clientId, orderData) => {
-    const newOrder = {
-      id: Date.now().toString(),
-      clientId,
-      produit: orderData.produit,
-      quantite: orderData.quantite,
-      prix: orderData.prix,
-      photo: orderData.photo || null,
-      checked: false,
-      createdAt: new Date().toISOString(),
-    };
-    const updated = await addMotoOrder(newOrder);
-    setOrders(updated);
-  }, []);
+    try {
+      // Find client info
+      const client = clients.find(c => c.id === clientId);
+      if (!client) {
+        throw new Error('Client introuvable');
+      }
+      
+      const newOrder = {
+        id: Date.now().toString(),
+        clientId,
+        clientNom: client.nom,
+        clientNumero: client.numero,
+        clientAdresse: client.adresse,
+        produit: orderData.produit,
+        quantite: orderData.quantite,
+        prix: orderData.prix,
+        photo: orderData.photo || null,
+        checked: false,
+        createdAt: new Date().toISOString(),
+      };
+      const updated = await addMotoOrder(newOrder);
+      setOrders(updated);
+    } catch (error) {
+      console.error('Error adding order:', error);
+      if (Platform.OS === 'web') {
+        alert('Erreur lors de l\'ajout de la commande: ' + error.message);
+      } else {
+        Alert.alert('Erreur', 'Impossible d\'ajouter la commande: ' + error.message);
+      }
+    }
+  }, [clients]);
 
   const handleToggleOrder = useCallback(async (orderId) => {
     const order = orders.find(o => o.id === orderId);

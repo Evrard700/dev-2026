@@ -54,8 +54,8 @@ export default function LoginScreen() {
     if (result.error) {
       setError(result.error);
     } else {
-      const userMode = result.user?.mode || 'moto';
-      router.replace(userMode === 'b2b' ? '/b2b' : '/moto');
+      // MVP: Force all users to MOTO mode (B2B disabled for testing)
+      router.replace('/moto');
     }
   };
 

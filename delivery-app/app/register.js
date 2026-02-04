@@ -155,7 +155,7 @@ export default function RegisterScreen() {
     if (!showTransition) return null;
 
     const isMoto = transitionMode === 'moto';
-    const primaryColor = isMoto ? '#007AFF' : '#FF9500';
+    const primaryColor = isMoto ? '#DC2626' : '#DC2626';
     const secondaryColor = isMoto ? '#5AC8FA' : '#FFCC02';
     const label = isMoto ? 'MOTO LIVRAISON' : 'GESTION B2B';
     const subLabel = isMoto ? 'Pret a livrer !' : 'Gerez vos livraisons !';
@@ -302,7 +302,7 @@ export default function RegisterScreen() {
               opacity: sparkle3,
               transform: [{ scale: sparkle3 }],
             }]}>
-              <View style={[styles.sparkleInner, { backgroundColor: '#FF9500' }]} />
+              <View style={[styles.sparkleInner, { backgroundColor: '#DC2626' }]} />
             </Animated.View>
           </View>
 
@@ -433,7 +433,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
   },
   flex: { flex: 1 },
   scrollContent: {
@@ -472,14 +472,14 @@ const styles = StyleSheet.create({
     width: 24,
     height: 30,
     borderWidth: 2.5,
-    borderColor: '#FF9500',
+    borderColor: '#DC2626',
     borderRadius: 6,
     position: 'absolute',
   },
   logoLine1: {
     width: 12,
     height: 2.5,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
     borderRadius: 2,
     position: 'absolute',
     top: 12,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   logoLine2: {
     width: 12,
     height: 2.5,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
     borderRadius: 2,
     position: 'absolute',
     top: 18,
@@ -508,8 +508,8 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#007AFF',
-    shadowColor: '#007AFF',
+    backgroundColor: '#DC2626',
+    shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 6,
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   modeCardActive: {
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
     backgroundColor: '#EBF5FF',
   },
   modeIconBox: {
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modeIconBoxActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
 
   // Moto icon in mode card
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   modeLabelActive: {
-    color: '#007AFF',
+    color: '#DC2626',
   },
   modeDesc: {
     fontSize: 11,
@@ -707,13 +707,13 @@ const styles = StyleSheet.create({
   },
 
   registerBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 16,
     paddingVertical: 17,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 22,
-    shadowColor: '#007AFF',
+    shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

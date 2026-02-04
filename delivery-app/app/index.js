@@ -173,9 +173,9 @@ const styles = StyleSheet.create({
   logoContainer: { marginBottom: 16 },
   logoCircle: {
     width: 76, height: 76, borderRadius: 22,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#007AFF', shadowOffset: { width: 0, height: 8 },
+    shadowColor: '#DC2626', shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35, shadowRadius: 16, elevation: 10,
   },
   logoPin: { alignItems: 'center' },
@@ -215,8 +215,8 @@ const styles = StyleSheet.create({
   cardDescription: { fontSize: 13, color: '#8e8e93', lineHeight: 18, marginBottom: 10 },
   cardFeatures: { flexDirection: 'row', gap: 6 },
   featureTag: { backgroundColor: '#EBF5FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  featureTagText: { fontSize: 11, fontWeight: '600', color: '#007AFF' },
-  cardArrow: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center' },
+  featureTagText: { fontSize: 11, fontWeight: '600', color: '#DC2626' },
+  cardArrow: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center' },
   cardArrowText: { color: '#fff', fontSize: 18, fontWeight: '600' },
 
   footer: { alignItems: 'center', paddingBottom: 24, paddingTop: 10 },

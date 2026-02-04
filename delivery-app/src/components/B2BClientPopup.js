@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   infoIconText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   infoLabel: {
     fontSize: 12,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     borderWidth: 3,
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
   },
   pinTail: {
     width: 0,
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 6,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#007AFF',
+    borderTopColor: '#DC2626',
     marginTop: -2,
   },
 
@@ -345,11 +345,11 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderWidth: 2.5,
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
     transform: [{ rotate: '45deg' }],
   },
   navBtnText: {
-    color: '#007AFF',
+    color: '#DC2626',
     fontSize: 14,
     fontWeight: '600',
   },

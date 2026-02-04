@@ -906,7 +906,7 @@ const styles = StyleSheet.create({
   settingsLine: {
     width: 20,
     height: 2.5,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 2,
   },
 
@@ -934,7 +934,7 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#DC2626',
     letterSpacing: 0.8,
     marginBottom: 4,
     textTransform: 'uppercase',
@@ -960,7 +960,7 @@ const styles = StyleSheet.create({
   menuItemIconText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   menuItemContent: {
     flex: 1,
@@ -989,8 +989,8 @@ const styles = StyleSheet.create({
 
   // Gear icon
   gearIcon: { width: 18, height: 18, justifyContent: 'center', alignItems: 'center' },
-  gearCircle: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: '#007AFF', position: 'absolute' },
-  gearTooth: { width: 4, height: 4, borderRadius: 1, backgroundColor: '#007AFF', position: 'absolute' },
+  gearCircle: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: '#DC2626', position: 'absolute' },
+  gearTooth: { width: 4, height: 4, borderRadius: 1, backgroundColor: '#DC2626', position: 'absolute' },
 
   // Position icon
   posIcon: { width: 18, height: 18, justifyContent: 'center', alignItems: 'center' },
@@ -1023,14 +1023,14 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   controlBtnActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
 
   // 2D/3D Toggle
   viewToggleText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   viewToggleTextActive: {
     color: '#fff',
@@ -1056,7 +1056,7 @@ const styles = StyleSheet.create({
   zoomBtnText: {
     fontSize: 24,
     fontWeight: '500',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   zoomDivider: {
     height: 1,
@@ -1106,7 +1106,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
     backgroundColor: 'transparent',
     transform: [{ rotate: '45deg' }],
     position: 'absolute',
@@ -1132,19 +1132,19 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
     position: 'absolute',
   },
   crosshairDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     position: 'absolute',
   },
   crosshairLine: {
     position: 'absolute',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
   crosshairTop: { width: 2, height: 5, top: 0 },
   crosshairBottom: { width: 2, height: 5, bottom: 0 },
@@ -1173,7 +1173,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f2f2f7',
   },
   layerPickerBtnActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
   layerPickerBtnText: {
     fontSize: 14,
@@ -1202,18 +1202,18 @@ const styles = StyleSheet.create({
   },
   routeBannerNav: {
     borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
+    borderLeftColor: '#DC2626',
   },
   navPulse: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     marginRight: 10,
   },
   routeInfoContent: { flex: 1 },
   routeDestination: { color: '#000', fontSize: 16, fontWeight: '600', letterSpacing: -0.2 },
-  routeDetails: { color: '#007AFF', fontSize: 14, fontWeight: '600', marginTop: 3 },
+  routeDetails: { color: '#DC2626', fontSize: 14, fontWeight: '600', marginTop: 3 },
   routeCloseBtn: {
     width: 32, height: 32, borderRadius: 16, backgroundColor: '#f2f2f7',
     justifyContent: 'center', alignItems: 'center',
@@ -1270,7 +1270,7 @@ const styles = StyleSheet.create({
   searchIcon: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#007AFF',
+    color: '#DC2626',
     marginRight: 10,
   },
   searchInput: {
@@ -1316,7 +1316,7 @@ const styles = StyleSheet.create({
   searchResultIconText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   searchResultInfo: {
     flex: 1,

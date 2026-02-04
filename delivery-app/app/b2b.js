@@ -429,9 +429,9 @@ export default function B2BScreen() {
 
   const webMarkers = useMemo(() => {
     return displayedClients.map(client => {
-      let color = '#007AFF';
+      let color = '#DC2626';
       if (activeView === 'delivery') {
-        color = client.served === true ? '#34c759' : '#FF9500';
+        color = client.served === true ? '#34c759' : '#DC2626';
       }
       let borderColor = '#ffffff';
       if (activeView === 'delivery') {
@@ -455,7 +455,7 @@ export default function B2BScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#DC2626" />
         <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
@@ -506,13 +506,13 @@ export default function B2BScreen() {
         <MapboxGL.UserLocation
           visible={true}
           showsUserHeadingIndicator={true}
-          pulsing={{ isEnabled: true, color: '#007AFF', radius: 50 }}
+          pulsing={{ isEnabled: true, color: '#DC2626', radius: 50 }}
         />
         {displayedClients.map((client) => {
-          let markerColor = '#007AFF';
+          let markerColor = '#DC2626';
           let markerBorder = '#ffffff';
           if (activeView === 'delivery') {
-            markerColor = client.served === true ? '#34c759' : '#FF9500';
+            markerColor = client.served === true ? '#34c759' : '#DC2626';
             if (client.served === true) markerBorder = '#34c759';
             else if (client.served === false) markerBorder = '#e74c3c';
           }
@@ -544,7 +544,7 @@ export default function B2BScreen() {
             <MapboxGL.LineLayer
               id="routeLine"
               style={{
-                lineColor: '#007AFF',
+                lineColor: '#DC2626',
                 lineWidth: 8,
                 lineCap: 'round',
                 lineJoin: 'round',
@@ -938,7 +938,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   settingsIcon: { gap: 4 },
-  settingsLine: { width: 20, height: 2.5, backgroundColor: '#007AFF', borderRadius: 2 },
+  settingsLine: { width: 20, height: 2.5, backgroundColor: '#DC2626', borderRadius: 2 },
 
   // Menu overlay
   menuOverlay: {
@@ -964,7 +964,7 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#DC2626',
     letterSpacing: 0.8,
     marginBottom: 4,
     textTransform: 'uppercase',
@@ -1000,8 +1000,8 @@ const styles = StyleSheet.create({
 
   // Gear icon
   gearIcon: { width: 18, height: 18, justifyContent: 'center', alignItems: 'center' },
-  gearCircle: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: '#007AFF', position: 'absolute' },
-  gearTooth: { width: 4, height: 4, borderRadius: 1, backgroundColor: '#007AFF', position: 'absolute' },
+  gearCircle: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: '#DC2626', position: 'absolute' },
+  gearTooth: { width: 4, height: 4, borderRadius: 1, backgroundColor: '#DC2626', position: 'absolute' },
 
   // Position icon
   posIcon: { width: 18, height: 18, justifyContent: 'center', alignItems: 'center' },
@@ -1034,12 +1034,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   controlBtnActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
   viewToggleText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   viewToggleTextActive: {
     color: '#fff',
@@ -1063,7 +1063,7 @@ const styles = StyleSheet.create({
   zoomBtnText: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   zoomDivider: {
     height: 1,
@@ -1102,15 +1102,15 @@ const styles = StyleSheet.create({
   },
   layersIconWrap: { width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
   layerDiamond: {
-    width: 16, height: 16, borderWidth: 2, borderColor: '#007AFF',
+    width: 16, height: 16, borderWidth: 2, borderColor: '#DC2626',
     backgroundColor: 'transparent', transform: [{ rotate: '45deg' }], position: 'absolute',
   },
   layerDiamond1: { top: 1 },
   layerDiamond2: { top: 6, width: 14, height: 14, borderColor: '#5AC8FA' },
   crosshairWrap: { width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
-  crosshairRing: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#007AFF', position: 'absolute' },
-  crosshairDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#007AFF', position: 'absolute' },
-  crosshairLine: { position: 'absolute', backgroundColor: '#007AFF' },
+  crosshairRing: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#DC2626', position: 'absolute' },
+  crosshairDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#DC2626', position: 'absolute' },
+  crosshairLine: { position: 'absolute', backgroundColor: '#DC2626' },
   crosshairTop: { width: 2, height: 5, top: 0 },
   crosshairBottom: { width: 2, height: 5, bottom: 0 },
   crosshairLeft: { width: 5, height: 2, left: 0 },
@@ -1137,7 +1137,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#f2f2f7',
   },
-  layerPickerBtnActive: { backgroundColor: '#007AFF' },
+  layerPickerBtnActive: { backgroundColor: '#DC2626' },
   layerPickerBtnText: { fontSize: 14, fontWeight: '600', color: '#3c3c43' },
   layerPickerBtnTextActive: { color: '#fff' },
 
@@ -1168,7 +1168,7 @@ const styles = StyleSheet.create({
     minWidth: 200,
   },
   viewMenuBtnActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
   viewMenuBtnIcon: {
     width: 36,
@@ -1191,7 +1191,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   clientCountBadge: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 11,
     minWidth: 24,
     height: 24,
@@ -1205,7 +1205,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   viewMenuBadge: {
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
     borderRadius: 11,
     minWidth: 24,
     height: 24,
@@ -1229,7 +1229,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     position: 'absolute',
   },
   personBody: {
@@ -1237,7 +1237,7 @@ const styles = StyleSheet.create({
     height: 6,
     borderTopLeftRadius: 5,
     borderTopRightRadius: 5,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     position: 'absolute',
   },
 
@@ -1251,7 +1251,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
     position: 'absolute',
     left: 8,
     top: 0,
@@ -1261,7 +1261,7 @@ const styles = StyleSheet.create({
     height: 5,
     borderTopLeftRadius: 4,
     borderTopRightRadius: 4,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
     position: 'absolute',
     left: 7,
     top: 6,
@@ -1271,7 +1271,7 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
     borderWidth: 2,
-    borderColor: '#FF9500',
+    borderColor: '#DC2626',
     position: 'absolute',
     left: 1,
     bottom: 0,
@@ -1281,7 +1281,7 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
     borderWidth: 2,
-    borderColor: '#FF9500',
+    borderColor: '#DC2626',
     position: 'absolute',
     right: 1,
     bottom: 0,
@@ -1289,7 +1289,7 @@ const styles = StyleSheet.create({
   motoFrame: {
     width: 12,
     height: 2.5,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
     borderRadius: 1,
     position: 'absolute',
     left: 6,
@@ -1301,10 +1301,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#007AFF',
+    shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -1316,7 +1316,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
   },
   viewMenuMainBtnDelivery: {
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
   },
   viewMenuMainBtnActive: {
     backgroundColor: '#0055CC',
@@ -1353,10 +1353,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   mainPersonHeadBlue: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
   mainPersonBodyBlue: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
 
   // Floating client list
@@ -1428,8 +1428,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clientCheckboxChecked: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
   },
   clientCheckmark: {
     color: '#fff',
@@ -1445,7 +1445,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   clientListNameSelected: {
-    color: '#007AFF',
+    color: '#DC2626',
   },
   clientListAddr: {
     fontSize: 12,
@@ -1468,7 +1468,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     borderWidth: 2.5,
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
   },
   locatePinTail: {
     width: 0,
@@ -1478,11 +1478,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 5,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#007AFF',
+    borderTopColor: '#DC2626',
     marginTop: -2,
   },
   goToDeliveryBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     paddingVertical: 14,
     alignItems: 'center',
     borderBottomLeftRadius: 20,
@@ -1513,7 +1513,7 @@ const styles = StyleSheet.create({
   },
   routeInfoContent: { flex: 1 },
   routeDestination: { color: '#000', fontSize: 16, fontWeight: '600', letterSpacing: -0.2 },
-  routeDetails: { color: '#007AFF', fontSize: 14, fontWeight: '600', marginTop: 3 },
+  routeDetails: { color: '#DC2626', fontSize: 14, fontWeight: '600', marginTop: 3 },
   routeCloseBtn: {
     width: 32, height: 32, borderRadius: 16, backgroundColor: '#f2f2f7',
     justifyContent: 'center', alignItems: 'center',
@@ -1564,7 +1564,7 @@ const styles = StyleSheet.create({
   searchIcon: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#007AFF',
+    color: '#DC2626',
     marginRight: 10,
   },
   searchInput: {
@@ -1610,7 +1610,7 @@ const styles = StyleSheet.create({
   searchResultIconText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   searchResultInfo: {
     flex: 1,

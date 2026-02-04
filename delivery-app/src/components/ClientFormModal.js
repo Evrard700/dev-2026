@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 14,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#007AFF',
+    borderBottomColor: '#DC2626',
   },
   photoPickSun: {
     position: 'absolute',
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
   },
   cameraIconWrap: {
     width: 32,
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 4,
     borderWidth: 2.5,
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
   },
   cameraLens: {
     position: 'absolute',
@@ -419,12 +419,12 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
   },
   photoPickText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#DC2626',
   },
 
   label: {

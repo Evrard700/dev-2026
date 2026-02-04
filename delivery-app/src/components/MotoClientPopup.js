@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
   addressText: {
     fontSize: 14,
@@ -520,14 +520,14 @@ const styles = StyleSheet.create({
   // Navigate button
   navBtn: {
     flexDirection: 'row',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
     gap: 10,
-    shadowColor: '#007AFF',
+    shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
   orderCountText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   addToggleBtn: {
     paddingHorizontal: 14,
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
   addToggleText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   addToggleTextActive: {
     color: '#8e8e93',
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 12,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#007AFF',
+    borderBottomColor: '#DC2626',
   },
   photoPickSun: {
     position: 'absolute',
@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
   },
   cameraIconWrap: {
     width: 28,
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
     height: 15,
     borderRadius: 3,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
   },
   cameraLens: {
     position: 'absolute',
@@ -709,12 +709,12 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: '#007AFF',
+    borderColor: '#DC2626',
   },
   photoPickText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#DC2626',
   },
 
   addInputFull: {
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e5ea',
   },
   addBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 14,
     paddingVertical: 13,
     alignItems: 'center',
@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   orderTotal: {
-    color: '#007AFF',
+    color: '#DC2626',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -874,7 +874,7 @@ const styles = StyleSheet.create({
   totalAmount: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#007AFF',
+    color: '#DC2626',
   },
 
   // Delete

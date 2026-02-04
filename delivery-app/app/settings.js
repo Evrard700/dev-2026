@@ -209,7 +209,7 @@ export default function SettingsScreen() {
 
           {downloading ? (
             <View style={styles.downloadingContainer}>
-              <ActivityIndicator size="small" color="#007AFF" />
+              <ActivityIndicator size="small" color="#DC2626" />
               <Text style={styles.downloadingText}>
                 Telechargement... {Math.round(downloadProgress)}%
               </Text>
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     borderColor: '#e8e8ee',
   },
   modeText: {
-    color: '#007AFF',
+    color: '#DC2626',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -343,8 +343,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   themeBtnActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
   },
   themeBtnText: {
     fontSize: 14,
@@ -369,8 +369,8 @@ const styles = StyleSheet.create({
     borderColor: '#e8e8ee',
   },
   cityBtnActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
   },
   cityBtnText: {
     fontSize: 13,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   downloadBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 3,
   },
   downloadedContainer: {

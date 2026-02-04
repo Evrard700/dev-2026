@@ -229,7 +229,7 @@ export default function SettingsPanel({ visible, onClose, mode }) {
               </View>
               {downloading ? (
                 <View style={styles.downloadingContainer}>
-                  <ActivityIndicator size="small" color="#007AFF" />
+                  <ActivityIndicator size="small" color="#DC2626" />
                   <Text style={styles.downloadingText}>Telechargement... {Math.round(downloadProgress)}%</Text>
                   <View style={styles.progressBar}>
                     <View style={[styles.progressFill, { width: `${downloadProgress}%` }]} />
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeBtnText: {
-    color: '#007AFF',
+    color: '#DC2626',
     fontSize: 20,
     fontWeight: '700',
   },
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   modeBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#DC2626',
   },
   content: {
     flex: 1,
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   themeBtnActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
   themeIconCircle: {
     width: 32,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f2f2f7',
   },
   cityBtnActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
   },
   cityBtnText: {
     fontSize: 13,
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 3,
   },
   downloadedRow: {
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   actionBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   shareItemName: { fontSize: 14, fontWeight: '700', color: '#000' },
   shareItemEmail: { fontSize: 12, color: '#8e8e93', marginTop: 1 },
   importBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 10,
     paddingVertical: 7,
     paddingHorizontal: 12,

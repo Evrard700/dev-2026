@@ -139,7 +139,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#1F2937',
   },
   flex: { flex: 1 },
   scrollContent: {
@@ -176,14 +176,14 @@ const styles = StyleSheet.create({
     width: 24,
     height: 30,
     borderWidth: 2.5,
-    borderColor: '#FF9500',
+    borderColor: '#DC2626',
     borderRadius: 6,
     position: 'absolute',
   },
   logoLine1: {
     width: 12,
     height: 2.5,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
     borderRadius: 2,
     position: 'absolute',
     top: 12,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   logoLine2: {
     width: 12,
     height: 2.5,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#DC2626',
     borderRadius: 2,
     position: 'absolute',
     top: 18,
@@ -256,18 +256,18 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   forgotText: {
-    color: '#007AFF',
+    color: '#DC2626',
     fontSize: 14,
     fontWeight: '600',
   },
 
   loginBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DC2626',
     borderRadius: 16,
     paddingVertical: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#007AFF',
+    shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

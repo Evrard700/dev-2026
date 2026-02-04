@@ -7,9 +7,10 @@ headers = []
 [functions."*"]
 
 [build]
-publish = "C:\\Users\\guehi\\OneDrive\\Images\\Bureau\\dev 2026\\claude appli1\\delivery-app\\dist"
+publish = "/root/.openclaw/workspace/test-access/delivery-app/dist"
 publishOrigin = "config"
 commandOrigin = "config"
+base = "/root/.openclaw/workspace/test-access/delivery-app"
 command = "npx expo export --platform web"
 
 [build.environment]

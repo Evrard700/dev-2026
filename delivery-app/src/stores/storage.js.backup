@@ -1,292 +1,103 @@
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const MOTO_CLIENTS_CACHE_KEY = '@moto_clients_cache';
-const MOTO_ORDERS_CACHE_KEY = '@moto_orders_cache';
+const MOTO_CLIENTS_KEY = '@moto_clients';
 const B2B_CLIENTS_KEY = '@b2b_clients';
+const MOTO_ORDERS_KEY = '@moto_orders';
 const B2B_DELIVERY_LIST_KEY = '@b2b_delivery_list';
 
-// ============ HELPER: Get current user ID ============
-async function getCurrentUserId() {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id;
-}
-
-// ============ MOTO CLIENTS - Supabase + Local Cache ============
+// ============ MOTO LIVRAISON ============
 
 export async function getMotoClients() {
   try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      console.warn('No user logged in, returning empty clients');
-      return [];
-    }
-
-    // Try Supabase first
-    const { data, error } = await supabase
-      .from('moto_clients')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Supabase error, falling back to cache:', error);
-      // Fallback to cache
-      const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
-      return cached ? JSON.parse(cached) : [];
-    }
-
-    // Update cache
-    await AsyncStorage.setItem(MOTO_CLIENTS_CACHE_KEY, JSON.stringify(data));
-    return data || [];
+    const data = await AsyncStorage.getItem(MOTO_CLIENTS_KEY);
+    return data ? JSON.parse(data) : [];
   } catch (e) {
     console.error('Error getting moto clients:', e);
-    // Fallback to cache
-    try {
-      const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
+    return [];
+  }
+}
+
+export async function saveMotoClients(clients) {
+  try {
+    await AsyncStorage.setItem(MOTO_CLIENTS_KEY, JSON.stringify(clients));
+  } catch (e) {
+    console.error('Error saving moto clients:', e);
   }
 }
 
 export async function addMotoClient(client) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
-
-    const clientData = {
-      user_id: userId,
-      name: client.name,
-      phone: client.phone,
-      address: client.address,
-      neighborhood: client.neighborhood || null,
-      lat: client.lat || null,
-      lng: client.lng || null,
-      notes: client.notes || null,
-    };
-
-    const { data, error } = await supabase
-      .from('moto_clients')
-      .insert([clientData])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Refresh from Supabase
-    const clients = await getMotoClients();
-    return clients;
-  } catch (e) {
-    console.error('Error adding moto client:', e);
-    throw e;
-  }
+  const clients = await getMotoClients();
+  clients.push(client);
+  await saveMotoClients(clients);
+  return clients;
 }
 
 export async function updateMotoClient(clientId, updates) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
-
-    const updateData = {
-      name: updates.name,
-      phone: updates.phone,
-      address: updates.address,
-      neighborhood: updates.neighborhood || null,
-      lat: updates.lat || null,
-      lng: updates.lng || null,
-      notes: updates.notes || null,
-    };
-
-    const { error } = await supabase
-      .from('moto_clients')
-      .update(updateData)
-      .eq('id', clientId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
-
-    // Refresh from Supabase
-    const clients = await getMotoClients();
-    return clients;
-  } catch (e) {
-    console.error('Error updating moto client:', e);
-    throw e;
+  const clients = await getMotoClients();
+  const index = clients.findIndex(c => c.id === clientId);
+  if (index !== -1) {
+    clients[index] = { ...clients[index], ...updates };
+    await saveMotoClients(clients);
   }
+  return clients;
 }
 
 export async function deleteMotoClient(clientId) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
-
-    // Delete client (cascade will delete related orders)
-    const { error } = await supabase
-      .from('moto_clients')
-      .delete()
-      .eq('id', clientId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
-
-    // Refresh from Supabase
-    const clients = await getMotoClients();
-    return clients;
-  } catch (e) {
-    console.error('Error deleting moto client:', e);
-    throw e;
-  }
+  let clients = await getMotoClients();
+  clients = clients.filter(c => c.id !== clientId);
+  await saveMotoClients(clients);
+  // Also remove orders for this client
+  let orders = await getMotoOrders();
+  orders = orders.filter(o => o.clientId !== clientId);
+  await saveMotoOrders(orders);
+  return clients;
 }
 
-// Deprecated - for backward compatibility
-export async function saveMotoClients(clients) {
-  console.warn('saveMotoClients is deprecated - data saved to Supabase automatically');
-}
-
-// ============ MOTO ORDERS - Supabase + Local Cache ============
+// ============ MOTO ORDERS ============
 
 export async function getMotoOrders() {
   try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      console.warn('No user logged in, returning empty orders');
-      return [];
-    }
-
-    // Try Supabase first
-    const { data, error } = await supabase
-      .from('moto_orders')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Supabase error, falling back to cache:', error);
-      // Fallback to cache
-      const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
-      return cached ? JSON.parse(cached) : [];
-    }
-
-    // Update cache
-    await AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(data));
-    return data || [];
+    const data = await AsyncStorage.getItem(MOTO_ORDERS_KEY);
+    return data ? JSON.parse(data) : [];
   } catch (e) {
     console.error('Error getting moto orders:', e);
-    // Fallback to cache
-    try {
-      const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
+    return [];
+  }
+}
+
+export async function saveMotoOrders(orders) {
+  try {
+    await AsyncStorage.setItem(MOTO_ORDERS_KEY, JSON.stringify(orders));
+  } catch (e) {
+    console.error('Error saving moto orders:', e);
   }
 }
 
 export async function addMotoOrder(order) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
-
-    const orderData = {
-      user_id: userId,
-      client_id: order.clientId,
-      client_name: order.clientName,
-      client_address: order.clientAddress,
-      client_phone: order.clientPhone,
-      price: parseFloat(order.price),
-      status: order.status || 'pending',
-      notes: order.notes || null,
-      delivered_at: order.deliveredAt || null,
-    };
-
-    const { data, error } = await supabase
-      .from('moto_orders')
-      .insert([orderData])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Refresh from Supabase
-    const orders = await getMotoOrders();
-    return orders;
-  } catch (e) {
-    console.error('Error adding moto order:', e);
-    throw e;
-  }
+  const orders = await getMotoOrders();
+  orders.push(order);
+  await saveMotoOrders(orders);
+  return orders;
 }
 
 export async function updateMotoOrder(orderId, updates) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
-
-    const updateData = {};
-    if (updates.status !== undefined) updateData.status = updates.status;
-    if (updates.price !== undefined) updateData.price = parseFloat(updates.price);
-    if (updates.notes !== undefined) updateData.notes = updates.notes || null;
-    if (updates.deliveredAt !== undefined || updates.delivered_at !== undefined) {
-      updateData.delivered_at = updates.deliveredAt || updates.delivered_at || null;
-    }
-
-    const { error } = await supabase
-      .from('moto_orders')
-      .update(updateData)
-      .eq('id', orderId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
-
-    // Refresh from Supabase
-    const orders = await getMotoOrders();
-    return orders;
-  } catch (e) {
-    console.error('Error updating moto order:', e);
-    throw e;
+  const orders = await getMotoOrders();
+  const index = orders.findIndex(o => o.id === orderId);
+  if (index !== -1) {
+    orders[index] = { ...orders[index], ...updates };
+    await saveMotoOrders(orders);
   }
+  return orders;
 }
 
 export async function deleteMotoOrder(orderId) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
-
-    const { error } = await supabase
-      .from('moto_orders')
-      .delete()
-      .eq('id', orderId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
-
-    // Refresh from Supabase
-    const orders = await getMotoOrders();
-    return orders;
-  } catch (e) {
-    console.error('Error deleting moto order:', e);
-    throw e;
-  }
+  let orders = await getMotoOrders();
+  orders = orders.filter(o => o.id !== orderId);
+  await saveMotoOrders(orders);
+  return orders;
 }
 
-// Deprecated - for backward compatibility
-export async function saveMotoOrders(orders) {
-  console.warn('saveMotoOrders is deprecated - data saved to Supabase automatically');
-}
-
-// ============ B2B CLIENTS (Local Storage - MVP disabled) ============
+// ============ B2B CLIENTS ============
 
 export async function getB2BClients() {
   try {
@@ -330,7 +141,7 @@ export async function deleteB2BClient(clientId) {
   return clients;
 }
 
-// ============ B2B DELIVERY LIST (Local Storage - MVP disabled) ============
+// ============ B2B DELIVERY LIST ============
 
 export async function getB2BDeliveryList() {
   try {
@@ -349,6 +160,7 @@ export async function saveB2BDeliveryList(list) {
     console.error('Error saving B2B delivery list:', e);
   }
 }
+
 
 // ============ AUTH ============
 
@@ -519,7 +331,7 @@ export async function saveAppTheme(theme) {
   await AsyncStorage.setItem(THEME_KEY, theme);
 }
 
-// ============ DATA EXPORT/IMPORT ============
+// ============ DATA SHARING ============
 
 export async function exportAllData(interfaceType) {
   try {
@@ -542,9 +354,8 @@ export async function importData(jsonString) {
   try {
     const data = JSON.parse(jsonString);
     if (data.type === 'moto') {
-      // Import is not supported for Supabase-backed data
-      console.warn('Import for MOTO mode is not supported with Supabase sync');
-      return false;
+      await saveMotoClients(data.clients || []);
+      await saveMotoOrders(data.orders || []);
     } else if (data.type === 'b2b') {
       await saveB2BClients(data.clients || []);
       await saveB2BDeliveryList(data.deliveryList || []);

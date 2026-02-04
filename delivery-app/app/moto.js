@@ -245,23 +245,32 @@ export default function MotoScreen() {
   }, []);
 
   const handleAddClient = useCallback(async (formData) => {
-    let coord = formData.coordinate;
-    if (formData.googleLink) {
-      const parsed = parseGoogleMapsUrl(formData.googleLink);
-      if (parsed) coord = [parsed.longitude, parsed.latitude];
+    try {
+      let coord = formData.coordinate || [0, 0];
+      if (formData.googleLink) {
+        const parsed = parseGoogleMapsUrl(formData.googleLink);
+        if (parsed) coord = [parsed.longitude, parsed.latitude];
+      }
+      const newClient = {
+        id: Date.now().toString(),
+        nom: formData.nom,
+        numero: formData.numero,
+        adresse: formData.adresse,
+        googleLink: formData.googleLink,
+        longitude: coord[0],
+        latitude: coord[1],
+        createdAt: new Date().toISOString(),
+      };
+      const updated = await addMotoClient(newClient);
+      setClients(updated);
+    } catch (error) {
+      console.error('Error adding client:', error);
+      if (Platform.OS === 'web') {
+        alert('Erreur lors de l\'ajout du client: ' + error.message);
+      } else {
+        Alert.alert('Erreur', 'Impossible d\'ajouter le client: ' + error.message);
+      }
     }
-    const newClient = {
-      id: Date.now().toString(),
-      nom: formData.nom,
-      numero: formData.numero,
-      adresse: formData.adresse,
-      googleLink: formData.googleLink,
-      longitude: coord[0],
-      latitude: coord[1],
-      createdAt: new Date().toISOString(),
-    };
-    const updated = await addMotoClient(newClient);
-    setClients(updated);
   }, []);
 
   const handleDeleteClient = useCallback(async (clientId) => {

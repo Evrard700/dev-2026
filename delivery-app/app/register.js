@@ -341,27 +341,11 @@ export default function RegisterScreen() {
                 <Text style={styles.modeDesc}>Livreur individuel</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.modeCard, selectedMode === 'b2b' && styles.modeCardActive]}
-                onPress={() => setSelectedMode('b2b')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.modeIconBox, selectedMode === 'b2b' && styles.modeIconBoxActive]}>
-                  {/* Truck icon */}
-                  <View style={styles.modeIconTruck}>
-                    <View style={[styles.truckCab, selectedMode === 'b2b' && styles.truckCabActive]} />
-                    <View style={[styles.truckCargo, selectedMode === 'b2b' && styles.truckCargoActive]} />
-                    <View style={[styles.truckWh, { left: 6, bottom: 0 }, selectedMode === 'b2b' && styles.truckWhActive]} />
-                    <View style={[styles.truckWh, { right: 4, bottom: 0 }, selectedMode === 'b2b' && styles.truckWhActive]} />
-                  </View>
-                </View>
-                <Text style={[styles.modeLabel, selectedMode === 'b2b' && styles.modeLabelActive]}>B2B</Text>
-                <Text style={styles.modeDesc}>Equipe logistique</Text>
-              </TouchableOpacity>
+              {/* B2B mode hidden for MVP testing */}
             </View>
 
             <Text style={styles.modeNote}>
-              Le mode choisi ne pourra pas etre modifie apres l'inscription
+              Mode livreur individuel - Version test MVP
             </Text>
 
             {/* Form */}

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { GOOGLE_MAPS_API_KEY } from '../../utils/config';
+
+// Clé API Google Maps publique (requise côté client pour charger Maps JS API)
+const GOOGLE_MAPS_API_KEY = 'AIzaSyCa3sQ8kgVb7pYw4GNlbdT3K6P-wDr4IAw';
 
 const GoogleMapView = forwardRef((props, ref) => {
   const {

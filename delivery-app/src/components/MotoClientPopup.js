@@ -280,11 +280,30 @@ export default function MotoClientPopup({
                   )}
                 </View>
                 <TouchableOpacity
-                  style={[styles.addToggleBtn, showAddForm && styles.addToggleBtnActive]}
-                  onPress={() => setShowAddForm(!showAddForm)}
+                  style={[
+                    styles.addToggleBtn, 
+                    showAddForm && styles.addToggleBtnActive,
+                    client.id.startsWith('temp_') && styles.addToggleBtnDisabled
+                  ]}
+                  onPress={() => {
+                    if (client.id.startsWith('temp_')) {
+                      if (Platform.OS === 'web') {
+                        alert('Synchronisation en cours... Veuillez patienter quelques secondes.');
+                      } else {
+                        Alert.alert('Synchronisation', 'Synchronisation en cours... Veuillez patienter quelques secondes.');
+                      }
+                      return;
+                    }
+                    setShowAddForm(!showAddForm);
+                  }}
+                  disabled={client.id.startsWith('temp_')}
                 >
-                  <Text style={[styles.addToggleText, showAddForm && styles.addToggleTextActive]}>
-                    {showAddForm ? 'Fermer' : '+ Ajouter'}
+                  <Text style={[
+                    styles.addToggleText, 
+                    showAddForm && styles.addToggleTextActive,
+                    client.id.startsWith('temp_') && styles.addToggleTextDisabled
+                  ]}>
+                    {client.id.startsWith('temp_') ? '⏳ Synchronisation...' : (showAddForm ? 'Fermer' : '+ Ajouter')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -599,12 +618,19 @@ const styles = StyleSheet.create({
   addToggleBtnActive: {
     backgroundColor: '#f2f2f7',
   },
+  addToggleBtnDisabled: {
+    backgroundColor: '#f2f2f7',
+    opacity: 0.5,
+  },
   addToggleText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#DC2626',
   },
   addToggleTextActive: {
+    color: '#8e8e93',
+  },
+  addToggleTextDisabled: {
     color: '#8e8e93',
   },
 

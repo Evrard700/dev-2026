@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { getDirectionsUrl, parseGoogleMapsUrl, MAPBOX_TOKEN } from '../src/utils/mapbox';
 import { getCurrentLocation, watchLocation } from '../src/utils/location';
+import { hybridSearch } from '../src/utils/search';
 import {
   getMotoClients,
   addMotoClient,
@@ -676,55 +677,44 @@ export default function MotoScreen() {
     }
     searchTimerRef.current = setTimeout(async () => {
       try {
-        const proximity = userLocation ? `&proximity=${userLocation[0]},${userLocation[1]}` : '';
-        // Use bbox around user location for better local results (roughly 50km radius)
-        const bbox = userLocation
-          ? `&bbox=${userLocation[0] - 0.5},${userLocation[1] - 0.5},${userLocation[0] + 0.5},${userLocation[1] + 0.5}`
-          : '';
-        // Enhanced search with all POI types and autocomplete
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?access_token=${MAPBOX_TOKEN}&limit=15&language=fr${proximity}${bbox}&types=poi,address,place,locality,neighborhood,district,region&autocomplete=true&fuzzyMatch=true`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.features && data.features.length > 0) {
-          setSearchResults(data.features.map(f => ({
-            id: f.id,
-            name: f.text,
-            fullName: f.place_name,
-            coords: f.center,
-            category: f.properties?.category || '',
-          })));
+        // Recherche hybride intelligente: clients + Mapbox
+        const results = await hybridSearch(text, clients, orders, userLocation, MAPBOX_TOKEN);
+        
+        // Combiner et afficher les résultats
+        const allResults = [...results.clients, ...results.places];
+        
+        if (allResults.length > 0) {
+          setSearchResults(allResults);
           setShowSearchResults(true);
         } else {
-          // If no results, try without bbox for broader search
-          const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?access_token=${MAPBOX_TOKEN}&limit=10&language=fr${proximity}&types=poi,address,place,locality,neighborhood&autocomplete=true`;
-          const fallbackRes = await fetch(fallbackUrl);
-          const fallbackData = await fallbackRes.json();
-          if (fallbackData.features) {
-            setSearchResults(fallbackData.features.map(f => ({
-              id: f.id,
-              name: f.text,
-              fullName: f.place_name,
-              coords: f.center,
-              category: f.properties?.category || '',
-            })));
-            setShowSearchResults(true);
-          }
+          setSearchResults([]);
+          setShowSearchResults(false);
         }
       } catch (e) {
         console.warn('Search error:', e);
+        setSearchResults([]);
+        setShowSearchResults(false);
       }
-    }, 300);
-  }, [userLocation]);
+    }, 200); // Réduit à 200ms pour réactivité
+  }, [userLocation, clients, orders]);
 
   const handleSelectSearchResult = useCallback((result) => {
     setSearchQuery(result.name);
     setShowSearchResults(false);
     setSearchResults([]);
     Keyboard.dismiss();
+    
+    // Si c'est un client, ouvrir la popup du client
+    if (result.type === 'client' && result.client) {
+      setSelectedClient(result.client);
+      setShowClientPopup(true);
+    }
+    
+    // Centrer la carte sur le résultat
     if (Platform.OS === 'web' && mapRef.current) {
       mapRef.current.setCamera({
         centerCoordinate: result.coords,
-        zoomLevel: 16,
+        zoomLevel: result.type === 'client' ? 17 : 16,
         pitch: 0,
         bearing: 0,
         animationDuration: 1200,
@@ -732,7 +722,7 @@ export default function MotoScreen() {
     } else if (cameraRef.current) {
       cameraRef.current.setCamera({
         centerCoordinate: result.coords,
-        zoomLevel: 16,
+        zoomLevel: result.type === 'client' ? 17 : 16,
         pitch: 0,
         heading: 0,
         animationDuration: 1200,
@@ -894,15 +884,37 @@ export default function MotoScreen() {
             {searchResults.map((item) => (
               <TouchableOpacity
                 key={item.id}
-                style={styles.searchResultItem}
+                style={[
+                  styles.searchResultItem,
+                  item.type === 'client' && styles.searchResultItemClient
+                ]}
                 onPress={() => handleSelectSearchResult(item)}
               >
-                <View style={styles.searchResultIcon}>
-                  <Text style={styles.searchResultIconText}>P</Text>
+                <View style={[
+                  styles.searchResultIcon,
+                  item.type === 'client' && styles.searchResultIconClient
+                ]}>
+                  <Text style={styles.searchResultIconText}>
+                    {item.type === 'client' ? '👤' : '📍'}
+                  </Text>
                 </View>
                 <View style={styles.searchResultInfo}>
-                  <Text style={styles.searchResultName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.searchResultAddress} numberOfLines={1}>{item.fullName}</Text>
+                  <Text style={[
+                    styles.searchResultName,
+                    item.type === 'client' && styles.searchResultNameClient
+                  ]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.searchResultAddress} numberOfLines={1}>
+                    {item.subtitle || item.fullName || ''}
+                  </Text>
+                  {item.type === 'client' && item.score && (
+                    <Text style={styles.searchResultScore}>
+                      {item.score >= 80 ? '🎯 Excellente correspondance' : 
+                       item.score >= 60 ? '✓ Bonne correspondance' : 
+                       '~ Correspondance partielle'}
+                    </Text>
+                  )}
                 </View>
               </TouchableOpacity>
             ))}
@@ -1502,5 +1514,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8e8e93',
     marginTop: 2,
+  },
+  searchResultItemClient: {
+    backgroundColor: '#FFF7ED',
+  },
+  searchResultIconClient: {
+    backgroundColor: '#DC2626',
+  },
+  searchResultNameClient: {
+    color: '#DC2626',
+    fontWeight: '700',
+  },
+  searchResultScore: {
+    fontSize: 10,
+    color: '#10b981',
+    marginTop: 3,
+    fontWeight: '600',
   },
 });

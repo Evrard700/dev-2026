@@ -48,12 +48,11 @@ const MAP_STYLES = [
 
 const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
 const CAMERA_UPDATE_DELAY = 300; // Délai pour stabiliser (éviter tremblements)
-const BEARING_SMOOTHING = 0.85; // Lissage élevé de la rotation (0 = instantané, 1 = immobile)
-const MIN_SPEED_FOR_ROTATION = 0.3; // Vitesse minimale (m/s) pour faire tourner la carte (~1 km/h)
+const BEARING_SMOOTHING = 0.70; // Lissage modéré pour rotation fluide mais réactive
+const MIN_SPEED_FOR_ROTATION = 0.5; // Vitesse minimale (m/s) pour faire tourner la carte (~1.8 km/h)
 const MIN_DISTANCE_FOR_BEARING = 0.00005; // Distance minimale pour recalculer le bearing
 const NAVIGATION_ZOOM = 18; // Zoom fixe pendant navigation
 const NAVIGATION_PITCH = 60; // Inclinaison fixe pendant navigation
-const MIN_TURN_ANGLE = 35; // Angle minimal (degrés) pour considérer un virage/carrefour
 
 // Calculate bearing between two points
 function calcBearing(from, to) {
@@ -187,22 +186,49 @@ export default function MotoScreen() {
       userLocationRef.current = newLoc;
       setUserLocation(newLoc);
 
-      // Navigation camera: UNIQUEMENT centrage, JAMAIS de rotation automatique
-      if (isNavigatingRef.current && routeTargetRef.current) {
+      // Mode GPS classique: Itinéraire toujours vertical (heading up navigation)
+      if (isNavigatingRef.current && routeTargetRef.current && isMoving) {
         if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
         cameraUpdateTimer.current = setTimeout(() => {
-          // CENTRAGE SEULEMENT - Garder orientation actuelle (bearing et pitch)
+          const bearing = smoothedBearingRef.current; // Direction lissée
+          
           if (Platform.OS === 'web' && mapRef.current) {
             const map = mapRef.current.getMap?.();
             if (map) {
-              // Utiliser easeTo avec UNIQUEMENT center (bearing et pitch inchangés)
+              // Rotation continue pour garder itinéraire vertical
+              map.easeTo({
+                center: [newLoc[0], newLoc[1]],
+                bearing: bearing, // Tourner selon direction
+                zoom: NAVIGATION_ZOOM,
+                pitch: NAVIGATION_PITCH,
+                duration: 500, // Rotation fluide
+              });
+            }
+          } else if (cameraRef.current) {
+            // Mobile: rotation continue pour itinéraire vertical
+            cameraRef.current.setCamera({
+              centerCoordinate: newLoc,
+              zoomLevel: NAVIGATION_ZOOM,
+              pitch: NAVIGATION_PITCH,
+              heading: bearing, // Tourner selon direction
+              animationDuration: 500,
+              animationMode: 'easeTo',
+            });
+          }
+        }, CAMERA_UPDATE_DELAY);
+      } else if (isNavigatingRef.current && routeTargetRef.current && !isMoving) {
+        // Immobile: juste centrer, garder orientation
+        if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
+        cameraUpdateTimer.current = setTimeout(() => {
+          if (Platform.OS === 'web' && mapRef.current) {
+            const map = mapRef.current.getMap?.();
+            if (map) {
               map.easeTo({
                 center: [newLoc[0], newLoc[1]],
                 duration: 300,
               });
             }
           } else if (cameraRef.current) {
-            // Mobile: centrer sans changer heading/pitch
             cameraRef.current.setCamera({
               centerCoordinate: newLoc,
               animationDuration: 300,
@@ -481,15 +507,29 @@ export default function MotoScreen() {
       routeTargetRef.current = client;
       isNavigatingRef.current = true;
       setIsNavigating(true);
-      // Zoom sur la position actuelle SEULEMENT (pas de rotation)
+      // Calculer direction initiale vers destination
+      const navBearing = calcBearing(userLocation, [client.longitude, client.latitude]);
+      userBearingRef.current = navBearing;
+      smoothedBearingRef.current = navBearing;
+      lastMapBearingRef.current = navBearing;
+      // Démarrer en mode GPS: itinéraire vertical vers le haut
       if (Platform.OS === 'web' && mapRef.current) {
-        mapRef.current.easeTo(userLocation, NAVIGATION_ZOOM, 0, 0, 1000); // bearing=0, pitch=0 (nord en haut, vue plate)
+        const map = mapRef.current.getMap?.();
+        if (map) {
+          map.easeTo({
+            center: userLocation,
+            zoom: NAVIGATION_ZOOM,
+            bearing: navBearing, // Orienter vers destination
+            pitch: NAVIGATION_PITCH,
+            duration: 1000,
+          });
+        }
       } else if (cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: userLocation,
           zoomLevel: NAVIGATION_ZOOM,
-          pitch: 0, // Vue plate
-          heading: 0, // Nord en haut
+          pitch: NAVIGATION_PITCH,
+          heading: navBearing, // Orienter vers destination
           animationDuration: 1000,
         });
       }

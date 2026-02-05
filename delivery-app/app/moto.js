@@ -11,6 +11,8 @@ import {
   Keyboard,
   Animated,
   Pressable,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getDirectionsUrl, parseGoogleMapsUrl, MAPBOX_TOKEN } from '../src/utils/mapbox';
@@ -97,6 +99,7 @@ export default function MotoScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showClientsList, setShowClientsList] = useState(false);
   const searchTimerRef = useRef(null);
   const cameraUpdateTimer = useRef(null);
 
@@ -113,6 +116,7 @@ export default function MotoScreen() {
   const zoomInScale = useRef(new Animated.Value(1)).current;
   const zoomOutScale = useRef(new Animated.Value(1)).current;
   const compassScale = useRef(new Animated.Value(1)).current;
+  const clientsBtnScale = useRef(new Animated.Value(1)).current;
   const animPress = useCallback((anim) => ({
     onPressIn: () => Animated.spring(anim, { toValue: 0.88, useNativeDriver: true, speed: 50, bounciness: 4 }).start(),
     onPressOut: () => Animated.spring(anim, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 10 }).start(),
@@ -1102,6 +1106,24 @@ export default function MotoScreen() {
           <Text style={styles.hintText}>Appui long sur la carte pour ajouter un client</Text>
         </View>
       )}
+      {/* Clients list button - bottom left */}
+      {enrichedClients.length > 0 && (
+        <Animated.View style={[styles.clientsListBtn, { transform: [{ scale: clientsBtnScale }] }]}>
+          <Pressable
+            style={styles.clientsListBtnInner}
+            onPress={() => setShowClientsList(true)}
+            {...animPress(clientsBtnScale)}
+          >
+            <View style={styles.clientsIcon}>
+              <View style={styles.clientsIconHead} />
+              <View style={styles.clientsIconBody} />
+            </View>
+            <View style={styles.clientsBadge}>
+              <Text style={styles.clientsBadgeText}>{enrichedClients.length}</Text>
+            </View>
+          </Pressable>
+        </Animated.View>
+      )}
 
       <ClientFormModal
         visible={showClientForm}
@@ -1151,6 +1173,49 @@ export default function MotoScreen() {
           }
         }}
       />
+
+      {/* Clients List Modal */}
+      {showClientsList && (
+        <Modal visible={true} transparent animationType="slide" onRequestClose={() => setShowClientsList(false)}>
+          <View style={styles.clientsListOverlay}>
+            <View style={styles.clientsListContainer}>
+              <View style={styles.clientsListHeader}>
+                <TouchableOpacity style={styles.clientsListBackBtn} onPress={() => setShowClientsList(false)}>
+                  <Text style={styles.clientsListBackText}>{'<'}</Text>
+                </TouchableOpacity>
+                <Text style={styles.clientsListTitle}>Clients</Text>
+                <View style={styles.clientsListBadge}>
+                  <Text style={styles.clientsListBadgeText}>{enrichedClients.length}</Text>
+                </View>
+              </View>
+              <ScrollView style={styles.clientsListScroll} showsVerticalScrollIndicator={false}>
+                {enrichedClients.map((client) => (
+                  <TouchableOpacity
+                    key={client.id}
+                    style={styles.clientsListItem}
+                    onPress={() => {
+                      setShowClientsList(false);
+                      setSelectedClient(client);
+                      setShowClientPopup(true);
+                    }}
+                  >
+                    <View style={styles.clientsListItemNumber}>
+                      <Text style={styles.clientsListItemNumberText}>{client.proximityNumber}</Text>
+                    </View>
+                    <View style={styles.clientsListItemInfo}>
+                      <Text style={styles.clientsListItemName}>{client.nom}</Text>
+                      {client.distanceText && (
+                        <Text style={styles.clientsListItemDistance}>{client.distanceText}</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+                <View style={{ height: 30 }} />
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -1649,5 +1714,158 @@ const styles = StyleSheet.create({
     color: '#10b981',
     marginTop: 3,
     fontWeight: '600',
+  },
+
+  // Clients list button - bottom left
+  clientsListBtn: {
+    position: 'absolute',
+    bottom: 30,
+    left: 16,
+  },
+  clientsListBtnInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  clientsIcon: {
+    width: 24,
+    height: 24,
+  },
+  clientsIconHead: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#DC2626',
+    position: 'absolute',
+    top: 0,
+    left: 6,
+  },
+  clientsIconBody: {
+    width: 20,
+    height: 12,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    backgroundColor: '#DC2626',
+    position: 'absolute',
+    bottom: 0,
+    left: 2,
+  },
+  clientsBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#DC2626',
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  clientsBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  clientsListOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  clientsListContainer: {
+    height: '80%',
+    backgroundColor: '#f2f2f7',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  clientsListHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    gap: 12,
+  },
+  clientsListBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f2f2f7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clientsListBackText: {
+    color: '#DC2626',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  clientsListTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+  },
+  clientsListBadge: {
+    backgroundColor: '#EBF5FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  clientsListBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  clientsListScroll: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+  },
+  clientsListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 8,
+    gap: 12,
+  },
+  clientsListItemNumber: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#DC2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clientsListItemNumberText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  clientsListItemInfo: {
+    flex: 1,
+  },
+  clientsListItemName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+  },
+  clientsListItemDistance: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4ade80',
+    marginTop: 2,
   },
 });

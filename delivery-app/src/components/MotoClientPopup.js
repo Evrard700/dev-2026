@@ -246,7 +246,15 @@ export default function MotoClientPopup({
             </TouchableOpacity>
           </View>
 
-          {/* Header - Phone number */}
+          {/* Address - Premier plan */}
+          {client.adresse ? (
+            <View style={styles.addressRow}>
+              <View style={styles.addressDot} />
+              <Text style={styles.addressText} numberOfLines={2}>{client.adresse}</Text>
+            </View>
+          ) : null}
+
+          {/* Phone number */}
           {client.numero && (
             <TouchableOpacity
               style={styles.phoneRow}
@@ -264,14 +272,6 @@ export default function MotoClientPopup({
               <Text style={styles.phoneText}>{client.numero}</Text>
             </TouchableOpacity>
           )}
-
-          {/* Address */}
-          {client.adresse ? (
-            <View style={styles.addressRow}>
-              <View style={styles.addressDot} />
-              <Text style={styles.addressText} numberOfLines={2}>{client.adresse}</Text>
-            </View>
-          ) : null}
 
           {/* Navigate button */}
           <Animated.View style={{ transform: [{ scale: navScale }] }}>

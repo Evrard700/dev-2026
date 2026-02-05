@@ -374,6 +374,9 @@ export default function MotoScreen() {
         throw new Error('Client introuvable');
       }
       
+      // Check if client has temp ID (not yet synced to Supabase)
+      const isClientTemp = clientId.startsWith('temp_');
+      
       const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const newOrder = {
         id: tempId,
@@ -393,22 +396,49 @@ export default function MotoScreen() {
       const optimisticOrders = [newOrder, ...orders];
       setOrders(optimisticOrders);
       
-      // Sync to backend in background (don't await, don't use result)
-      addMotoOrder(newOrder).catch(error => {
-        console.error('Failed to add order:', error);
-        // Remove temp order on error
-        setOrders(orders);
-        if (Platform.OS === 'web') {
-          alert('Erreur lors de l\'ajout de la commande: ' + error.message);
-        } else {
-          Alert.alert('Erreur', 'Impossible d\'ajouter la commande: ' + error.message);
-        }
-      });
-      
-      // Refresh from backend after a delay to get real ID
-      setTimeout(() => {
-        getMotoOrders().then(setOrders).catch(console.error);
-      }, 2000);
+      if (isClientTemp) {
+        // Client not synced yet - wait and retry
+        console.log('Client temporaire détecté, attente de la synchronisation...');
+        setTimeout(async () => {
+          // Refresh clients to get real ID
+          const refreshedClients = await getMotoClients();
+          const realClient = refreshedClients.find(c => 
+            c.nom === client.nom && 
+            c.numero === client.numero &&
+            !c.id.startsWith('temp_')
+          );
+          
+          if (realClient) {
+            // Update order with real client ID
+            const orderWithRealClientId = { ...newOrder, clientId: realClient.id };
+            addMotoOrder(orderWithRealClientId).catch(console.error);
+            
+            // Refresh to show order with correct client ID
+            setTimeout(() => {
+              getMotoOrders().then(setOrders).catch(console.error);
+            }, 1000);
+          } else {
+            console.error('Client non synchronisé après 3s');
+          }
+        }, 3000);
+      } else {
+        // Client already synced - add order immediately
+        addMotoOrder(newOrder).catch(error => {
+          console.error('Failed to add order:', error);
+          // Remove temp order on error
+          setOrders(orders);
+          if (Platform.OS === 'web') {
+            alert('Erreur lors de l\'ajout de la commande: ' + error.message);
+          } else {
+            Alert.alert('Erreur', 'Impossible d\'ajouter la commande: ' + error.message);
+          }
+        });
+        
+        // Refresh from backend after a delay to get real ID
+        setTimeout(() => {
+          getMotoOrders().then(setOrders).catch(console.error);
+        }, 2000);
+      }
     } catch (error) {
       console.error('Error adding order:', error);
       if (Platform.OS === 'web') {

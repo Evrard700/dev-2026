@@ -98,8 +98,8 @@ export async function addMotoClient(client) {
           console.error('Background sync failed:', error);
           return;
         }
-        // Refresh cache from Supabase silently
-        getMotoClients().catch(console.error);
+        // Don't refresh cache - React state is source of truth
+        console.log('Client synced to Supabase:', data);
       })
       .catch(console.error);
 
@@ -163,9 +163,8 @@ export async function deleteMotoClient(clientId) {
           console.error('Background delete failed:', error);
           return;
         }
-        // Refresh cache from Supabase silently
-        getMotoClients().catch(console.error);
-        getMotoOrders().catch(console.error);
+        // Don't refresh cache - React state is source of truth
+        console.log('Client deleted from Supabase');
       })
       .catch(console.error);
 
@@ -288,7 +287,7 @@ export async function addMotoOrder(order) {
           return;
         }
         // Refresh cache from Supabase silently
-        getMotoOrders().catch(console.error);
+        console.log("Order synced to Supabase");
       })
       .catch(console.error);
 
@@ -337,7 +336,7 @@ export async function updateMotoOrder(orderId, updates) {
           return;
         }
         // Refresh cache from Supabase silently
-        getMotoOrders().catch(console.error);
+        console.log("Order synced to Supabase");
       })
       .catch(console.error);
 
@@ -368,7 +367,7 @@ export async function deleteMotoOrder(orderId) {
           return;
         }
         // Refresh cache from Supabase silently
-        getMotoOrders().catch(console.error);
+        console.log("Order synced to Supabase");
       })
       .catch(console.error);
 

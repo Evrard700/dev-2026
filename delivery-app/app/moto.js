@@ -322,22 +322,22 @@ export default function MotoScreen() {
       const optimisticClients = [newClient, ...clients];
       setClients(optimisticClients);
       
-      // Sync to backend in background (don't await)
-      addMotoClient(newClient)
-        .then(updated => {
-          // Replace temp client with real one
-          setClients(updated);
-        })
-        .catch(error => {
-          console.error('Failed to add client:', error);
-          // Remove temp client on error
-          setClients(clients);
-          if (Platform.OS === 'web') {
-            alert('Erreur lors de l\'ajout du client: ' + error.message);
-          } else {
-            Alert.alert('Erreur', 'Impossible d\'ajouter le client: ' + error.message);
-          }
-        });
+      // Sync to backend in background (don't await, don't use result)
+      addMotoClient(newClient).catch(error => {
+        console.error('Failed to add client:', error);
+        // Remove temp client on error
+        setClients(clients);
+        if (Platform.OS === 'web') {
+          alert('Erreur lors de l\'ajout du client: ' + error.message);
+        } else {
+          Alert.alert('Erreur', 'Impossible d\'ajouter le client: ' + error.message);
+        }
+      });
+      
+      // Refresh from backend after a delay to get real ID
+      setTimeout(() => {
+        getMotoClients().then(setClients).catch(console.error);
+      }, 2000);
     } catch (error) {
       console.error('Error adding client:', error);
       if (Platform.OS === 'web') {
@@ -357,19 +357,13 @@ export default function MotoScreen() {
     setShowClientPopup(false);
     setSelectedClient(null);
     
-    // Sync to backend in background (don't await)
-    deleteMotoClient(clientId)
-      .then(updated => {
-        setClients(updated);
-        return getMotoOrders();
-      })
-      .then(setOrders)
-      .catch(err => {
-        console.error('Failed to delete client:', err);
-        // Refresh from backend on error
-        getMotoClients().then(setClients).catch(console.error);
-        getMotoOrders().then(setOrders).catch(console.error);
-      });
+    // Sync to backend in background (don't await, don't use result)
+    deleteMotoClient(clientId).catch(err => {
+      console.error('Failed to delete client:', err);
+      // Refresh from backend on error
+      getMotoClients().then(setClients).catch(console.error);
+      getMotoOrders().then(setOrders).catch(console.error);
+    });
   }, [clients, orders]);
 
   const handleAddOrder = useCallback(async (clientId, orderData) => {
@@ -399,22 +393,22 @@ export default function MotoScreen() {
       const optimisticOrders = [newOrder, ...orders];
       setOrders(optimisticOrders);
       
-      // Sync to backend in background (don't await)
-      addMotoOrder(newOrder)
-        .then(updated => {
-          // Replace temp order with real one
-          setOrders(updated);
-        })
-        .catch(error => {
-          console.error('Failed to add order:', error);
-          // Remove temp order on error
-          setOrders(orders);
-          if (Platform.OS === 'web') {
-            alert('Erreur lors de l\'ajout de la commande: ' + error.message);
-          } else {
-            Alert.alert('Erreur', 'Impossible d\'ajouter la commande: ' + error.message);
-          }
-        });
+      // Sync to backend in background (don't await, don't use result)
+      addMotoOrder(newOrder).catch(error => {
+        console.error('Failed to add order:', error);
+        // Remove temp order on error
+        setOrders(orders);
+        if (Platform.OS === 'web') {
+          alert('Erreur lors de l\'ajout de la commande: ' + error.message);
+        } else {
+          Alert.alert('Erreur', 'Impossible d\'ajouter la commande: ' + error.message);
+        }
+      });
+      
+      // Refresh from backend after a delay to get real ID
+      setTimeout(() => {
+        getMotoOrders().then(setOrders).catch(console.error);
+      }, 2000);
     } catch (error) {
       console.error('Error adding order:', error);
       if (Platform.OS === 'web') {
@@ -434,17 +428,12 @@ export default function MotoScreen() {
       );
       setOrders(optimisticOrders);
       
-      // Sync to backend in background (don't await)
-      updateMotoOrder(orderId, { checked: !order.checked })
-        .then(updated => {
-          // Refresh with real data from backend
-          setOrders(updated);
-        })
-        .catch(err => {
-          console.error('Failed to toggle order:', err);
-          // Revert on error
-          setOrders(orders);
-        });
+      // Sync to backend in background (don't await, don't use result)
+      updateMotoOrder(orderId, { checked: !order.checked }).catch(err => {
+        console.error('Failed to toggle order:', err);
+        // Revert on error
+        setOrders(orders);
+      });
     }
   }, [orders]);
 
@@ -453,17 +442,12 @@ export default function MotoScreen() {
     const optimisticOrders = orders.filter(o => o.id !== orderId);
     setOrders(optimisticOrders);
     
-    // Sync to backend in background (don't await)
-    deleteMotoOrder(orderId)
-      .then(updated => {
-        // Refresh with real data
-        setOrders(updated);
-      })
-      .catch(err => {
-        console.error('Failed to delete order:', err);
-        // Revert on error
-        getMotoOrders().then(setOrders).catch(console.error);
-      });
+    // Sync to backend in background (don't await, don't use result)
+    deleteMotoOrder(orderId).catch(err => {
+      console.error('Failed to delete order:', err);
+      // Revert on error
+      getMotoOrders().then(setOrders).catch(console.error);
+    });
   }, [orders]);
 
   const handleNavigateToClient = useCallback(async (client) => {

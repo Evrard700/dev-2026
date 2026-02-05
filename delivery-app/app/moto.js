@@ -721,6 +721,22 @@ export default function MotoScreen() {
     }
   }, []);
 
+  // Fonction pour calculer la distance réelle en mètres (formule Haversine)
+  const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // Rayon de la Terre en mètres
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance en mètres
+  }, []);
+
   const webMarkers = useMemo(() => {
     if (!userLocation) {
       // Si pas de position utilisateur, juste afficher dans l'ordre d'ajout
@@ -731,18 +747,21 @@ export default function MotoScreen() {
           longitude: client.longitude,
           latitude: client.latitude,
           color: allChecked ? '#27ae60' : '#c0392b',
-          label: String(index + 1), // Numéro au lieu d'acronyme
+          label: String(index + 1),
           name: client.nom,
-          showName: mapZoom >= 14, // Afficher nom si zoom >= 14
+          showName: mapZoom >= 14,
         };
       });
     }
 
-    // Calculer distance de chaque client par rapport à la position actuelle
+    // Calculer la VRAIE distance géographique de chaque client
     const clientsWithDistance = clients.map(client => {
-      const dx = client.longitude - userLocation[0];
-      const dy = client.latitude - userLocation[1];
-      const distance = Math.sqrt(dx * dx + dy * dy); // Distance euclidienne simple
+      const distance = calculateDistance(
+        userLocation[1], // lat utilisateur
+        userLocation[0], // lng utilisateur
+        client.latitude,
+        client.longitude
+      );
       return { ...client, distance };
     });
 
@@ -757,12 +776,13 @@ export default function MotoScreen() {
         longitude: client.longitude,
         latitude: client.latitude,
         color: allChecked ? '#27ae60' : '#c0392b',
-        label: String(index + 1), // Numéro : 1 = plus proche, 2 = suivant, etc.
+        label: String(index + 1), // 1 = plus proche, 2 = suivant, etc.
         name: client.nom,
-        showName: mapZoom >= 14, // Afficher nom si zoom >= 14
+        showName: mapZoom >= 14,
+        distanceMeters: Math.round(client.distance), // Pour debug
       };
     });
-  }, [clients, orders, isClientAllChecked, userLocation, mapZoom]);
+  }, [clients, orders, isClientAllChecked, userLocation, mapZoom, calculateDistance]);
 
   if (loading) {
     return (
@@ -855,11 +875,14 @@ export default function MotoScreen() {
             });
           }
 
-          // Calculate distances and sort
+          // Calculate REAL geographic distances and sort
           const clientsWithDistance = clients.map(client => {
-            const dx = client.longitude - userLocation[0];
-            const dy = client.latitude - userLocation[1];
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distance = calculateDistance(
+              userLocation[1], // lat utilisateur
+              userLocation[0], // lng utilisateur
+              client.latitude,
+              client.longitude
+            );
             return { ...client, distance };
           });
           clientsWithDistance.sort((a, b) => a.distance - b.distance);

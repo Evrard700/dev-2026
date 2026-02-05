@@ -47,10 +47,10 @@ const MAP_STYLES = [
 ];
 
 const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
-const CAMERA_UPDATE_DELAY = 300; // Délai pour stabiliser (éviter tremblements)
-const BEARING_SMOOTHING = 0.70; // Lissage modéré pour rotation fluide mais réactive
-const MIN_SPEED_FOR_ROTATION = 0.5; // Vitesse minimale (m/s) pour faire tourner la carte (~1.8 km/h)
-const MIN_DISTANCE_FOR_BEARING = 0.00005; // Distance minimale pour recalculer le bearing
+const CAMERA_UPDATE_DELAY = 100; // Délai très court pour rotation instantanée
+const BEARING_SMOOTHING = 0.40; // Lissage faible pour rotation très réactive
+const MIN_SPEED_FOR_ROTATION = 0.3; // Vitesse minimale (m/s) pour faire tourner la carte (~1 km/h)
+const MIN_DISTANCE_FOR_BEARING = 0.00003; // Distance minimale réduite pour calcul bearing fréquent
 const NAVIGATION_ZOOM = 18; // Zoom fixe pendant navigation
 const NAVIGATION_PITCH = 60; // Inclinaison fixe pendant navigation
 
@@ -195,23 +195,24 @@ export default function MotoScreen() {
           if (Platform.OS === 'web' && mapRef.current) {
             const map = mapRef.current.getMap?.();
             if (map) {
-              // Rotation continue pour garder itinéraire vertical
+              // Rotation instantanée pour suivi temps réel
               map.easeTo({
                 center: [newLoc[0], newLoc[1]],
                 bearing: bearing, // Tourner selon direction
                 zoom: NAVIGATION_ZOOM,
                 pitch: NAVIGATION_PITCH,
-                duration: 500, // Rotation fluide
+                duration: 250, // Animation ultra-rapide pour temps réel
+                easing: (t) => t, // Linéaire pour plus de naturel
               });
             }
           } else if (cameraRef.current) {
-            // Mobile: rotation continue pour itinéraire vertical
+            // Mobile: rotation instantanée pour itinéraire vertical
             cameraRef.current.setCamera({
               centerCoordinate: newLoc,
               zoomLevel: NAVIGATION_ZOOM,
               pitch: NAVIGATION_PITCH,
               heading: bearing, // Tourner selon direction
-              animationDuration: 500,
+              animationDuration: 250, // Animation ultra-rapide
               animationMode: 'easeTo',
             });
           }
@@ -225,13 +226,13 @@ export default function MotoScreen() {
             if (map) {
               map.easeTo({
                 center: [newLoc[0], newLoc[1]],
-                duration: 300,
+                duration: 200,
               });
             }
           } else if (cameraRef.current) {
             cameraRef.current.setCamera({
               centerCoordinate: newLoc,
-              animationDuration: 300,
+              animationDuration: 200,
               animationMode: 'easeTo',
             });
           }

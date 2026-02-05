@@ -36,6 +36,7 @@ const WebMapView = forwardRef(({
   onPitchChange,
   onZoomChange,
   mapStyle = 'mapbox://styles/mapbox/streets-v12',
+  disableGestures = false, // Nouveau: désactiver les gestes en mode navigation
 }, ref) => {
   const mapContainer = useRef(null);
   const mapInstance = useRef(null);
@@ -133,6 +134,32 @@ const WebMapView = forwardRef(({
     onLongPressRef.current = onLongPress;
   }, [onLongPress]);
 
+  // Update gesture controls dynamically when disableGestures changes
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    try {
+      if (disableGestures) {
+        // Mode navigation: désactiver tous les gestes
+        map.dragPan.disable();
+        map.scrollZoom.disable();
+        map.doubleClickZoom.disable();
+        map.touchZoomRotate.disable();
+        map.dragRotate.disable();
+      } else {
+        // Mode normal: réactiver les gestes
+        map.dragPan.enable();
+        map.scrollZoom.enable();
+        map.doubleClickZoom.enable();
+        map.touchZoomRotate.enable();
+        map.dragRotate.enable();
+      }
+    } catch (e) {
+      console.warn('Error toggling gestures:', e);
+    }
+  }, [disableGestures]);
+
   useEffect(() => {
     onMarkerPressRef.current = onMarkerPress;
   }, [onMarkerPress]);
@@ -161,11 +188,14 @@ const WebMapView = forwardRef(({
       pitch: pitch,
       bearing: bearing,
       antialias: true,
-      // Enhanced gesture controls
-      touchZoomRotate: true,
-      touchPitch: true,
-      dragRotate: true,
-      pitchWithRotate: true,
+      // Enhanced gesture controls - Désactivés en mode navigation
+      touchZoomRotate: !disableGestures,
+      touchPitch: !disableGestures,
+      dragRotate: !disableGestures,
+      pitchWithRotate: !disableGestures,
+      dragPan: !disableGestures, // Empêche de déplacer la carte
+      scrollZoom: !disableGestures, // Empêche de zoomer
+      doubleClickZoom: !disableGestures, // Empêche double-clic zoom
       // Smooth animations
       fadeDuration: 300,
       // Better performance

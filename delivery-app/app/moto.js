@@ -45,7 +45,8 @@ const MAP_STYLES = [
   { id: '3d', label: '3D', url: 'mapbox://styles/mapbox/outdoors-v12' },
 ];
 
-const ROUTE_UPDATE_INTERVAL = 8000;
+const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
+const CAMERA_UPDATE_DELAY = 50; // Update caméra toutes les 50ms pendant navigation
 
 // Calculate bearing between two points
 function calcBearing(from, to) {
@@ -139,7 +140,8 @@ export default function MotoScreen() {
       const newLoc = [loc.coords.longitude, loc.coords.latitude];
       if (prevLocationRef.current) {
         const dist = Math.hypot(newLoc[0] - prevLocationRef.current[0], newLoc[1] - prevLocationRef.current[1]);
-        if (dist > 0.00005) {
+        // Seuil réduit pour calcul de bearing plus réactif (0.00005 → 0.00002)
+        if (dist > 0.00002) {
           userBearingRef.current = calcBearing(prevLocationRef.current, newLoc);
           prevLocationRef.current = newLoc;
         }
@@ -149,24 +151,26 @@ export default function MotoScreen() {
       userLocationRef.current = newLoc;
       setUserLocation(newLoc);
 
-      // Smooth camera follow during navigation (no re-creating intervals)
+      // Smooth camera follow during navigation - Mode navigation strict
       if (isNavigatingRef.current && routeTargetRef.current) {
         if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
         cameraUpdateTimer.current = setTimeout(() => {
           const bearing = userBearingRef.current;
           if (Platform.OS === 'web' && mapRef.current) {
-            mapRef.current.easeTo(newLoc, 17, bearing, 60);
+            // Web: suivi fluide avec rotation automatique
+            mapRef.current.easeTo(newLoc, 18, bearing, 65);
           } else if (cameraRef.current) {
+            // Mobile: suivi fluide avec rotation automatique
             cameraRef.current.setCamera({
               centerCoordinate: newLoc,
-              zoomLevel: 17,
-              pitch: 60,
+              zoomLevel: 18,
+              pitch: 65,
               heading: bearing,
-              animationDuration: 2000,
+              animationDuration: 300, // Animation plus courte pour suivi plus réactif
               animationMode: 'easeTo',
             });
           }
-        }, 100);
+        }, CAMERA_UPDATE_DELAY);
       }
     });
     return () => sub.remove();
@@ -639,6 +643,7 @@ export default function MotoScreen() {
           markers={webMarkers}
           routeGeoJSON={routeGeoJSON}
           userLocation={userLocation}
+          disableGestures={isNavigating} // Mode navigation: désactive les gestes utilisateur
         />
       );
     }
@@ -649,8 +654,10 @@ export default function MotoScreen() {
         style={styles.map}
         styleURL={mapStyle}
         onLongPress={handleMapLongPress}
-        pitchEnabled={true}
-        rotateEnabled={true}
+        pitchEnabled={!isNavigating} // Désactivé en mode navigation
+        rotateEnabled={!isNavigating} // Désactivé en mode navigation
+        scrollEnabled={!isNavigating} // Désactivé en mode navigation
+        zoomEnabled={!isNavigating} // Désactivé en mode navigation
         compassEnabled={true}
         scaleBarEnabled={false}
       >

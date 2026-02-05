@@ -100,6 +100,8 @@ export default function MotoScreen() {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showClientsList, setShowClientsList] = useState(false);
+  const [clientsSelectionMode, setClientsSelectionMode] = useState(false);
+  const [selectedClients, setSelectedClients] = useState([]);
   const searchTimerRef = useRef(null);
   const cameraUpdateTimer = useRef(null);
 
@@ -1180,25 +1182,87 @@ export default function MotoScreen() {
           <View style={styles.clientsListOverlay}>
             <View style={styles.clientsListContainer}>
               <View style={styles.clientsListHeader}>
-                <TouchableOpacity style={styles.clientsListBackBtn} onPress={() => setShowClientsList(false)}>
+                <TouchableOpacity 
+                  style={styles.clientsListBackBtn} 
+                  onPress={() => {
+                    setShowClientsList(false);
+                    setClientsSelectionMode(false);
+                    setSelectedClients([]);
+                  }}
+                >
                   <Text style={styles.clientsListBackText}>{'<'}</Text>
                 </TouchableOpacity>
                 <Text style={styles.clientsListTitle}>Clients</Text>
                 <View style={styles.clientsListBadge}>
                   <Text style={styles.clientsListBadgeText}>{enrichedClients.length}</Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.clientsListSelectBtn}
+                  onPress={() => {
+                    setClientsSelectionMode(!clientsSelectionMode);
+                    setSelectedClients([]);
+                  }}
+                >
+                  <Text style={styles.clientsListSelectBtnText}>
+                    {clientsSelectionMode ? 'Annuler' : 'Sélectionner'}
+                  </Text>
+                </TouchableOpacity>
               </View>
               <ScrollView style={styles.clientsListScroll} showsVerticalScrollIndicator={false}>
+                {clientsSelectionMode && (
+                  <View style={styles.clientsListSelectAll}>
+                    <TouchableOpacity
+                      style={styles.clientsListSelectAllBtn}
+                      onPress={() => {
+                        if (selectedClients.length === enrichedClients.length) {
+                          setSelectedClients([]);
+                        } else {
+                          setSelectedClients(enrichedClients.map(c => c.id));
+                        }
+                      }}
+                    >
+                      <View style={[
+                        styles.clientsListCheckbox,
+                        selectedClients.length === enrichedClients.length && styles.clientsListCheckboxChecked
+                      ]}>
+                        {selectedClients.length === enrichedClients.length && (
+                          <Text style={styles.clientsListCheckmark}>✓</Text>
+                        )}
+                      </View>
+                      <Text style={styles.clientsListSelectAllText}>
+                        {selectedClients.length === enrichedClients.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
                 {enrichedClients.map((client) => (
                   <TouchableOpacity
                     key={client.id}
                     style={styles.clientsListItem}
                     onPress={() => {
-                      setShowClientsList(false);
-                      setSelectedClient(client);
-                      setShowClientPopup(true);
+                      if (clientsSelectionMode) {
+                        if (selectedClients.includes(client.id)) {
+                          setSelectedClients(selectedClients.filter(id => id !== client.id));
+                        } else {
+                          setSelectedClients([...selectedClients, client.id]);
+                        }
+                      } else {
+                        setShowClientsList(false);
+                        setSelectedClient(client);
+                        setShowClientPopup(true);
+                      }
                     }}
                   >
+                    {clientsSelectionMode && (
+                      <View style={[
+                        styles.clientsListCheckbox,
+                        selectedClients.includes(client.id) && styles.clientsListCheckboxChecked
+                      ]}>
+                        {selectedClients.includes(client.id) && (
+                          <Text style={styles.clientsListCheckmark}>✓</Text>
+                        )}
+                      </View>
+                    )}
                     <View style={styles.clientsListItemNumber}>
                       <Text style={styles.clientsListItemNumberText}>{client.proximityNumber}</Text>
                     </View>
@@ -1212,6 +1276,56 @@ export default function MotoScreen() {
                 ))}
                 <View style={{ height: 30 }} />
               </ScrollView>
+              {clientsSelectionMode && selectedClients.length > 0 && (
+                <View style={styles.clientsListFooter}>
+                  <TouchableOpacity
+                    style={styles.clientsListDeleteBtn}
+                    onPress={() => {
+                      const count = selectedClients.length;
+                      const message = count === 1 
+                        ? 'Supprimer ce client ?' 
+                        : `Supprimer ${count} clients ?`;
+                      
+                      if (Platform.OS === 'web') {
+                        if (confirm(message)) {
+                          selectedClients.forEach(clientId => {
+                            const optimisticClients = clients.filter(c => c.id !== clientId);
+                            const optimisticOrders = orders.filter(o => o.clientId !== clientId);
+                            setClients(optimisticClients);
+                            setOrders(optimisticOrders);
+                            deleteMotoClient(clientId).catch(console.error);
+                          });
+                          setSelectedClients([]);
+                          setClientsSelectionMode(false);
+                        }
+                      } else {
+                        Alert.alert('Confirmation', message, [
+                          { text: 'Annuler', style: 'cancel' },
+                          {
+                            text: 'Supprimer',
+                            style: 'destructive',
+                            onPress: () => {
+                              selectedClients.forEach(clientId => {
+                                const optimisticClients = clients.filter(c => c.id !== clientId);
+                                const optimisticOrders = orders.filter(o => o.clientId !== clientId);
+                                setClients(optimisticClients);
+                                setOrders(optimisticOrders);
+                                deleteMotoClient(clientId).catch(console.error);
+                              });
+                              setSelectedClients([]);
+                              setClientsSelectionMode(false);
+                            }
+                          }
+                        ]);
+                      }
+                    }}
+                  >
+                    <Text style={styles.clientsListDeleteBtnText}>
+                      Supprimer ({selectedClients.length})
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         </Modal>
@@ -1867,5 +1981,68 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4ade80',
     marginTop: 2,
+  },
+
+  clientsListSelectBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#EBF5FF',
+  },
+  clientsListSelectBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
+  clientsListSelectAll: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 8,
+  },
+  clientsListSelectAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  clientsListSelectAllText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000',
+  },
+  clientsListCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#d1d1d6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clientsListCheckboxChecked: {
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
+  },
+  clientsListCheckmark: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  clientsListFooter: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5ea',
+    padding: 16,
+  },
+  clientsListDeleteBtn: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  clientsListDeleteBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

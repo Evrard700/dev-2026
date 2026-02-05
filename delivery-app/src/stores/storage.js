@@ -103,9 +103,8 @@ export async function addMotoClient(client) {
       })
       .catch(console.error);
 
-    // Return current clients from cache (UI handled by React state)
-    const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
-    return cached ? JSON.parse(cached) : [];
+    // Don't return anything - React handles UI state
+    return Promise.resolve();
   } catch (e) {
     console.error('Error adding moto client:', e);
     throw e;
@@ -170,9 +169,8 @@ export async function deleteMotoClient(clientId) {
       })
       .catch(console.error);
 
-    // Return current clients from cache (UI handled by React state)
-    const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
-    return cached ? JSON.parse(cached) : [];
+    // Don't return anything - React handles UI state
+    return Promise.resolve();
   } catch (e) {
     console.error('Error deleting moto client:', e);
     throw e;
@@ -294,9 +292,8 @@ export async function addMotoOrder(order) {
       })
       .catch(console.error);
 
-    // Return current orders from cache (UI handled by React state)
-    const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
-    return cached ? JSON.parse(cached) : [];
+    // Don't return anything - React handles UI state
+    return Promise.resolve();
   } catch (e) {
     console.error('Error adding moto order:', e);
     throw e;
@@ -344,9 +341,8 @@ export async function updateMotoOrder(orderId, updates) {
       })
       .catch(console.error);
 
-    // Return current orders from cache (UI handled by React state)
-    const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
-    return cached ? JSON.parse(cached) : [];
+    // Don't return anything - React handles UI state
+    return Promise.resolve();
   } catch (e) {
     console.error('Error updating moto order:', e);
     throw e;
@@ -376,9 +372,8 @@ export async function deleteMotoOrder(orderId) {
       })
       .catch(console.error);
 
-    // Return current orders from cache (UI handled by React state)
-    const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
-    return cached ? JSON.parse(cached) : [];
+    // Don't return anything - React handles UI state
+    return Promise.resolve();
   } catch (e) {
     console.error('Error deleting moto order:', e);
     throw e;

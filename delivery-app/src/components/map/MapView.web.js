@@ -486,7 +486,7 @@ const WebMapView = forwardRef(({
       container.appendChild(arrow);
       wrapper.appendChild(container);
 
-      // Add client name label (only if showName is true)
+      // Add client name + distance label (only if showName is true)
       if (markerData.showName && markerData.name) {
         const nameLabel = document.createElement('div');
         nameLabel.style.cssText = `
@@ -501,7 +501,14 @@ const WebMapView = forwardRef(({
           white-space: nowrap;
           box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         `;
-        nameLabel.textContent = markerData.name;
+        
+        // Afficher nom + distance si disponible
+        if (markerData.distanceText) {
+          nameLabel.innerHTML = `${markerData.name} <span style="color: #4ade80; font-weight: 700;">· ${markerData.distanceText}</span>`;
+        } else {
+          nameLabel.textContent = markerData.name;
+        }
+        
         wrapper.appendChild(nameLabel);
       }
 

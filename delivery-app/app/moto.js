@@ -771,6 +771,12 @@ export default function MotoScreen() {
     // Assigner numéros selon l'ordre de distance
     return clientsWithDistance.map((client, index) => {
       const allChecked = isClientAllChecked(client.id);
+      const distanceMeters = Math.round(client.distance);
+      // Format distance : < 1000m = "350 m", >= 1000m = "1.2 km"
+      const distanceText = distanceMeters < 1000 
+        ? `${distanceMeters} m`
+        : `${(distanceMeters / 1000).toFixed(1)} km`;
+      
       return {
         id: client.id,
         longitude: client.longitude,
@@ -779,7 +785,8 @@ export default function MotoScreen() {
         label: String(index + 1), // 1 = plus proche, 2 = suivant, etc.
         name: client.nom,
         showName: mapZoom >= 14,
-        distanceMeters: Math.round(client.distance), // Pour debug
+        distanceMeters: distanceMeters,
+        distanceText: distanceText, // "350 m" ou "1.2 km"
       };
     });
   }, [clients, orders, isClientAllChecked, userLocation, mapZoom, calculateDistance]);
@@ -890,6 +897,11 @@ export default function MotoScreen() {
           return clientsWithDistance.map((client, index) => {
             const allChecked = isClientAllChecked(client.id);
             const markerColor = allChecked ? '#27ae60' : '#c0392b';
+            const distanceMeters = Math.round(client.distance);
+            const distanceText = distanceMeters < 1000 
+              ? `${distanceMeters} m`
+              : `${(distanceMeters / 1000).toFixed(1)} km`;
+            
             return (
               <MapboxGL.PointAnnotation
                 key={client.id}
@@ -907,7 +919,9 @@ export default function MotoScreen() {
                   <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
                   {mapZoom >= 14 && (
                     <View style={styles.markerNameLabel}>
-                      <Text style={styles.markerNameText}>{client.nom}</Text>
+                      <Text style={styles.markerNameText}>
+                        {client.nom} <Text style={styles.markerDistanceText}>· {distanceText}</Text>
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -1509,6 +1523,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  markerDistanceText: {
+    color: '#4ade80',
+    fontSize: 13,
+    fontWeight: '700',
   },
 
   hint: {

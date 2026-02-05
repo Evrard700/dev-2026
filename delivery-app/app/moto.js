@@ -722,17 +722,47 @@ export default function MotoScreen() {
   }, []);
 
   const webMarkers = useMemo(() => {
-    return clients.map(client => {
+    if (!userLocation) {
+      // Si pas de position utilisateur, juste afficher dans l'ordre d'ajout
+      return clients.map((client, index) => {
+        const allChecked = isClientAllChecked(client.id);
+        return {
+          id: client.id,
+          longitude: client.longitude,
+          latitude: client.latitude,
+          color: allChecked ? '#27ae60' : '#c0392b',
+          label: String(index + 1), // Numéro au lieu d'acronyme
+          name: client.nom,
+          showName: mapZoom >= 14, // Afficher nom si zoom >= 14
+        };
+      });
+    }
+
+    // Calculer distance de chaque client par rapport à la position actuelle
+    const clientsWithDistance = clients.map(client => {
+      const dx = client.longitude - userLocation[0];
+      const dy = client.latitude - userLocation[1];
+      const distance = Math.sqrt(dx * dx + dy * dy); // Distance euclidienne simple
+      return { ...client, distance };
+    });
+
+    // Trier par distance (du plus proche au plus éloigné)
+    clientsWithDistance.sort((a, b) => a.distance - b.distance);
+
+    // Assigner numéros selon l'ordre de distance
+    return clientsWithDistance.map((client, index) => {
       const allChecked = isClientAllChecked(client.id);
       return {
         id: client.id,
         longitude: client.longitude,
         latitude: client.latitude,
         color: allChecked ? '#27ae60' : '#c0392b',
-        label: client.nom.substring(0, 2).toUpperCase(),
+        label: String(index + 1), // Numéro : 1 = plus proche, 2 = suivant, etc.
+        name: client.nom,
+        showName: mapZoom >= 14, // Afficher nom si zoom >= 14
       };
     });
-  }, [clients, orders, isClientAllChecked]);
+  }, [clients, orders, isClientAllChecked, userLocation, mapZoom]);
 
   if (loading) {
     return (
@@ -793,28 +823,75 @@ export default function MotoScreen() {
           showsUserHeadingIndicator={true}
           pulsing={{ isEnabled: true, color: '#4285F4', radius: 50 }}
         />
-        {clients.map((client) => {
-          const allChecked = isClientAllChecked(client.id);
-          const markerColor = allChecked ? '#27ae60' : '#c0392b';
-          return (
-            <MapboxGL.PointAnnotation
-              key={client.id}
-              id={`client-${client.id}`}
-              coordinate={[client.longitude, client.latitude]}
-              onSelected={() => {
-                setSelectedClient(client);
-                setShowClientPopup(true);
-              }}
-            >
-              <View style={styles.markerOuter}>
-                <View style={[styles.markerCircle, { backgroundColor: markerColor }]}>
-                  <Text style={styles.markerText}>{client.nom.substring(0, 2).toUpperCase()}</Text>
+        {(() => {
+          // Calculate distances and sort clients for mobile (same logic as webMarkers)
+          if (!userLocation) {
+            return clients.map((client, index) => {
+              const allChecked = isClientAllChecked(client.id);
+              const markerColor = allChecked ? '#27ae60' : '#c0392b';
+              return (
+                <MapboxGL.PointAnnotation
+                  key={client.id}
+                  id={`client-${client.id}`}
+                  coordinate={[client.longitude, client.latitude]}
+                  onSelected={() => {
+                    setSelectedClient(client);
+                    setShowClientPopup(true);
+                  }}
+                >
+                  <View style={styles.markerOuter}>
+                    <View style={[styles.markerCircle, { backgroundColor: markerColor }]}>
+                      <Text style={styles.markerText}>{index + 1}</Text>
+                    </View>
+                    <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
+                    {mapZoom >= 14 && (
+                      <View style={styles.markerNameLabel}>
+                        <Text style={styles.markerNameText}>{client.nom}</Text>
+                      </View>
+                    )}
+                  </View>
+                </MapboxGL.PointAnnotation>
+              );
+            });
+          }
+
+          // Calculate distances and sort
+          const clientsWithDistance = clients.map(client => {
+            const dx = client.longitude - userLocation[0];
+            const dy = client.latitude - userLocation[1];
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return { ...client, distance };
+          });
+          clientsWithDistance.sort((a, b) => a.distance - b.distance);
+
+          return clientsWithDistance.map((client, index) => {
+            const allChecked = isClientAllChecked(client.id);
+            const markerColor = allChecked ? '#27ae60' : '#c0392b';
+            return (
+              <MapboxGL.PointAnnotation
+                key={client.id}
+                id={`client-${client.id}`}
+                coordinate={[client.longitude, client.latitude]}
+                onSelected={() => {
+                  setSelectedClient(client);
+                  setShowClientPopup(true);
+                }}
+              >
+                <View style={styles.markerOuter}>
+                  <View style={[styles.markerCircle, { backgroundColor: markerColor }]}>
+                    <Text style={styles.markerText}>{index + 1}</Text>
+                  </View>
+                  <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
+                  {mapZoom >= 14 && (
+                    <View style={styles.markerNameLabel}>
+                      <Text style={styles.markerNameText}>{client.nom}</Text>
+                    </View>
+                  )}
                 </View>
-                <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
-              </View>
-            </MapboxGL.PointAnnotation>
-          );
-        })}
+              </MapboxGL.PointAnnotation>
+            );
+          });
+        })()}
         {routeGeoJSON && (
           <MapboxGL.ShapeSource id="routeSource" shape={routeGeoJSON}>
             <MapboxGL.LineLayer
@@ -1391,6 +1468,24 @@ const styles = StyleSheet.create({
     borderLeftWidth: 10, borderRightWidth: 10, borderTopWidth: 12,
     borderLeftColor: 'transparent', borderRightColor: 'transparent',
     marginTop: -2,
+  },
+  markerNameLabel: {
+    marginTop: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  markerNameText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 
   hint: {

@@ -417,10 +417,19 @@ const WebMapView = forwardRef(({
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
 
-    // Add new markers with solid avatar pin style
+    // Add new markers with solid avatar pin style + client name (if showName)
     markers.forEach((markerData) => {
       const color = markerData.color || '#c0392b';
       const border = markerData.borderColor || '#ffffff';
+
+      // Create outer wrapper for pin + label
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+      `;
 
       // Create pin container
       const container = document.createElement('div');
@@ -428,11 +437,10 @@ const WebMapView = forwardRef(({
         display: flex;
         flex-direction: column;
         align-items: center;
-        cursor: pointer;
         filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));
       `;
 
-      // Solid filled circle with avatar initials or photo
+      // Solid filled circle with number
       const circle = document.createElement('div');
       if (markerData.photo) {
         circle.style.cssText = `
@@ -456,7 +464,7 @@ const WebMapView = forwardRef(({
           align-items: center;
           justify-content: center;
           font-weight: 800;
-          font-size: 18px;
+          font-size: 20px;
           color: #ffffff;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         `;
@@ -476,12 +484,32 @@ const WebMapView = forwardRef(({
 
       container.appendChild(circle);
       container.appendChild(arrow);
+      wrapper.appendChild(container);
 
-      container.addEventListener('click', () => {
+      // Add client name label (only if showName is true)
+      if (markerData.showName && markerData.name) {
+        const nameLabel = document.createElement('div');
+        nameLabel.style.cssText = `
+          margin-top: 4px;
+          background: rgba(0, 0, 0, 0.75);
+          color: #ffffff;
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 13px;
+          font-weight: 600;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          white-space: nowrap;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        `;
+        nameLabel.textContent = markerData.name;
+        wrapper.appendChild(nameLabel);
+      }
+
+      wrapper.addEventListener('click', () => {
         if (onMarkerPressRef.current) onMarkerPressRef.current(markerData.id);
       });
 
-      const marker = new mapboxgl.Marker({ element: container, anchor: 'bottom' })
+      const marker = new mapboxgl.Marker({ element: wrapper, anchor: 'bottom' })
         .setLngLat([markerData.longitude, markerData.latitude])
         .addTo(mapInstance.current);
 

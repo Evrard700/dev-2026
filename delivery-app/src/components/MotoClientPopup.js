@@ -14,6 +14,7 @@ import {
   Image,
   Animated,
   Pressable,
+  Linking,
 } from 'react-native';
 
 let ImagePicker = null;
@@ -238,7 +239,19 @@ export default function MotoClientPopup({
               <View style={styles.headerInfo}>
                 <Text style={styles.clientName} numberOfLines={1}>{client.nom}</Text>
                 {client.numero ? (
-                  <Text style={styles.clientPhone}>{client.numero}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const phoneNumber = client.numero.replace(/\s+/g, '');
+                      Linking.openURL(`tel:${phoneNumber}`).catch(err => {
+                        console.warn('Failed to open phone dialer:', err);
+                        if (Platform.OS !== 'web') {
+                          Alert.alert('Erreur', 'Impossible d\'ouvrir le composeur téléphonique');
+                        }
+                      });
+                    }}
+                  >
+                    <Text style={styles.clientPhone}>📞 {client.numero}</Text>
+                  </TouchableOpacity>
                 ) : null}
               </View>
             </View>

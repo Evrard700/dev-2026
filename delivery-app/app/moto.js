@@ -1166,6 +1166,27 @@ export default function MotoScreen() {
         visible={showSettingsPanel}
         onClose={() => setShowSettingsPanel(false)}
         mode="moto"
+        clients={clients}
+        onClientPress={(client) => {
+          // Centrer la carte sur le client sélectionné
+          if (Platform.OS === 'web' && mapRef.current) {
+            mapRef.current.setCamera({
+              centerCoordinate: [client.longitude, client.latitude],
+              zoomLevel: 17,
+              pitch: 0,
+              bearing: 0,
+              animationDuration: 1200,
+            });
+          } else if (cameraRef.current) {
+            cameraRef.current.setCamera({
+              centerCoordinate: [client.longitude, client.latitude],
+              zoomLevel: 17,
+              pitch: 0,
+              heading: 0,
+              animationDuration: 1200,
+            });
+          }
+        }}
       />
     </View>
   );

@@ -31,7 +31,7 @@ const CITY_PRESETS = [
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PANEL_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 380);
 
-export default function SettingsPanel({ visible, onClose, mode }) {
+export default function SettingsPanel({ visible, onClose, mode, clients = [], onClientPress }) {
   const router = useRouter();
   const { themeMode, setThemeMode } = useTheme();
   const [slideAnim] = useState(new Animated.Value(PANEL_WIDTH));
@@ -42,6 +42,7 @@ export default function SettingsPanel({ visible, onClose, mode }) {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [offlinePack, setOfflinePack] = useState(null);
   const [selectedCity, setSelectedCity] = useState(0);
+  const [showClientsList, setShowClientsList] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -251,6 +252,27 @@ export default function SettingsPanel({ visible, onClose, mode }) {
               )}
             </View>
 
+            {/* Clients List */}
+            {mode === 'moto' && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionTitle}>Clients</Text>
+                  <View style={styles.clientCountBadge}>
+                    <Text style={styles.clientCountText}>{clients.length}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.clientsBtn} onPress={() => setShowClientsList(true)}>
+                  <View style={styles.clientsBtnIcon}>
+                    <View style={styles.clientsIconDot} />
+                    <View style={styles.clientsIconDot} />
+                    <View style={styles.clientsIconDot} />
+                  </View>
+                  <Text style={styles.clientsBtnText}>Voir tous les clients</Text>
+                  <Text style={styles.clientsBtnArrow}>›</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* App info */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>A propos</Text>
@@ -273,6 +295,66 @@ export default function SettingsPanel({ visible, onClose, mode }) {
           </ScrollView>
         </Animated.View>
       </View>
+
+      {/* Clients List Modal */}
+      {showClientsList && (
+        <Modal visible={true} transparent animationType="slide" onRequestClose={() => setShowClientsList(false)}>
+          <View style={styles.clientsListOverlay}>
+            <View style={styles.clientsListContainer}>
+              {/* Header */}
+              <View style={styles.clientsListHeader}>
+                <TouchableOpacity style={styles.clientsListBackBtn} onPress={() => setShowClientsList(false)}>
+                  <Text style={styles.clientsListBackText}>{'<'}</Text>
+                </TouchableOpacity>
+                <Text style={styles.clientsListTitle}>Tous les clients</Text>
+                <View style={styles.clientsListBadge}>
+                  <Text style={styles.clientsListBadgeText}>{clients.length}</Text>
+                </View>
+              </View>
+
+              {/* Clients ScrollView */}
+              <ScrollView style={styles.clientsListScroll} showsVerticalScrollIndicator={false}>
+                {clients.length === 0 ? (
+                  <View style={styles.clientsListEmpty}>
+                    <Text style={styles.clientsListEmptyIcon}>👤</Text>
+                    <Text style={styles.clientsListEmptyText}>Aucun client enregistré</Text>
+                  </View>
+                ) : (
+                  clients.map((client) => (
+                    <TouchableOpacity
+                      key={client.id}
+                      style={styles.clientsListItem}
+                      onPress={() => {
+                        setShowClientsList(false);
+                        handleClose();
+                        if (onClientPress) onClientPress(client);
+                      }}
+                    >
+                      <View style={styles.clientsListItemAvatar}>
+                        <Text style={styles.clientsListItemAvatarText}>
+                          {client.nom.substring(0, 2).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.clientsListItemInfo}>
+                        <Text style={styles.clientsListItemName}>{client.nom}</Text>
+                        {client.adresse ? (
+                          <Text style={styles.clientsListItemAddress} numberOfLines={1}>
+                            {client.adresse}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <View style={styles.clientsListItemArrow}>
+                        <Text style={styles.clientsListItemArrowText}>›</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                )}
+                <View style={{ height: 30 }} />
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
     </Modal>
   );
 }
@@ -571,5 +653,179 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 16,
     fontWeight: '700',
+  },
+
+  // Clients section
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  clientCountBadge: {
+    backgroundColor: '#EBF5FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  clientCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  clientsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f2f2f7',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  clientsBtnIcon: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  clientsIconDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#DC2626',
+  },
+  clientsBtnText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000',
+  },
+  clientsBtnArrow: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#8e8e93',
+  },
+
+  // Clients List Modal
+  clientsListOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  clientsListContainer: {
+    height: '85%',
+    backgroundColor: '#f2f2f7',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  clientsListHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    gap: 12,
+  },
+  clientsListBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f2f2f7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clientsListBackText: {
+    color: '#DC2626',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  clientsListTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+    letterSpacing: -0.3,
+  },
+  clientsListBadge: {
+    backgroundColor: '#EBF5FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  clientsListBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  clientsListScroll: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+  },
+  clientsListEmpty: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  clientsListEmptyIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  clientsListEmptyText: {
+    fontSize: 16,
+    color: '#8e8e93',
+    fontWeight: '600',
+  },
+  clientsListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 8,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  clientsListItemAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#DC2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clientsListItemAvatarText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  clientsListItemInfo: {
+    flex: 1,
+  },
+  clientsListItemName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+    letterSpacing: -0.2,
+  },
+  clientsListItemAddress: {
+    fontSize: 13,
+    color: '#8e8e93',
+    marginTop: 2,
+  },
+  clientsListItemArrow: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clientsListItemArrowText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#DC2626',
   },
 });

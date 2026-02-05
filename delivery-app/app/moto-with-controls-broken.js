@@ -28,6 +28,12 @@ import GlassCard from '../src/components/GlassCard';
 import GlassButton from '../src/components/GlassButton';
 import ClientFormModal from '../src/components/ClientFormModal.glass';
 import MotoClientPopup from '../src/components/MotoClientPopup';
+import { 
+  MapStyleButton, 
+  PositionButton, 
+  ZoomControls, 
+  CompassButton 
+} from '../src/components/MapControls';
 import { colors, spacing } from '../src/styles/glassmorphism';
 
 let MapboxGL, WebMapView;
@@ -42,6 +48,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 export default function MotoWithMapScreen() {
   const router = useRouter();
   const mapRef = useRef(null);
+  const cameraRef = useRef(null);
 
   const [userLocation, setUserLocation] = useState(null);
   const userLocationRef = useRef(null);
@@ -54,6 +61,16 @@ export default function MotoWithMapScreen() {
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showClientsList, setShowClientsList] = useState(false);
+  const [mapStyle, setMapStyle] = useState('mapbox://styles/mapbox/streets-v12');
+  const [mapZoom, setMapZoom] = useState(14);
+  const [mapBearing, setMapBearing] = useState(0);
+  
+  const MAP_STYLES = [
+    { id: 'streets', label: 'Standard', url: 'mapbox://styles/mapbox/streets-v12' },
+    { id: 'satellite', label: 'Satellite', url: 'mapbox://styles/mapbox/satellite-streets-v12' },
+    { id: 'nav', label: 'Navigation', url: 'mapbox://styles/mapbox/navigation-day-v1' },
+    { id: '3d', label: '3D', url: 'mapbox://styles/mapbox/outdoors-v12' },
+  ];
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -241,6 +258,43 @@ export default function MotoWithMapScreen() {
 
   const deliveredCount = orders.filter(o => o.checked).length;
 
+  const handleChangeMapStyle = () => {
+    const currentIndex = MAP_STYLES.findIndex(s => s.url === mapStyle);
+    const nextIndex = (currentIndex + 1) % MAP_STYLES.length;
+    setMapStyle(MAP_STYLES[nextIndex].url);
+  };
+
+  const handleCenterOnUser = () => {
+    if (userLocation && mapRef.current) {
+      // Center map on user location
+      if (Platform.OS === 'web') {
+        mapRef.current.flyTo({
+          center: userLocation,
+          zoom: 15,
+          duration: 1000,
+        });
+      } else if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: userLocation,
+          zoomLevel: 15,
+          animationDuration: 1000,
+        });
+      }
+    }
+  };
+
+  const handleZoomIn = () => {
+    setMapZoom(prev => Math.min(prev + 1, 20));
+  };
+
+  const handleZoomOut = () => {
+    setMapZoom(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleResetBearing = () => {
+    setMapBearing(0);
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -271,12 +325,14 @@ export default function MotoWithMapScreen() {
             <MapboxGL.MapView
               ref={mapRef}
               style={styles.map}
-              styleURL="mapbox://styles/mapbox/streets-v12"
+              styleURL={mapStyle}
               onPress={handleMapPress}
             >
               <MapboxGL.Camera
-                zoomLevel={14}
+                ref={cameraRef}
+                zoomLevel={mapZoom}
                 centerCoordinate={userLocation}
+                heading={mapBearing}
                 animationMode="flyTo"
               />
               {userLocation && (
@@ -318,6 +374,30 @@ export default function MotoWithMapScreen() {
             orderCount={orders.length}
             deliveredCount={deliveredCount}
             onSettingsPress={() => setShowSettings(!showSettings)}
+          />
+
+          {/* Map Controls */}
+          <MapStyleButton
+            currentStyle={MAP_STYLES.find(s => s.url === mapStyle)?.id || 'streets'}
+            onPress={handleChangeMapStyle}
+            style={styles.mapStyleBtn}
+          />
+
+          <PositionButton
+            onPress={handleCenterOnUser}
+            style={styles.positionBtn}
+          />
+
+          <ZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            style={styles.zoomControls}
+          />
+
+          <CompassButton
+            bearing={mapBearing}
+            onPress={handleResetBearing}
+            style={styles.compassBtn}
           />
 
           {/* Floating Add Button */}
@@ -474,6 +554,30 @@ const styles = StyleSheet.create({
   floatingListBtn: {
     position: 'absolute',
     bottom: spacing.xl + 80,
+    right: spacing.lg,
+    pointerEvents: 'auto',
+  },
+  mapStyleBtn: {
+    position: 'absolute',
+    top: 100,
+    right: spacing.lg,
+    pointerEvents: 'auto',
+  },
+  positionBtn: {
+    position: 'absolute',
+    top: 160,
+    right: spacing.lg,
+    pointerEvents: 'auto',
+  },
+  zoomControls: {
+    position: 'absolute',
+    bottom: spacing.xl + 160,
+    right: spacing.lg,
+    pointerEvents: 'auto',
+  },
+  compassBtn: {
+    position: 'absolute',
+    top: 220,
     right: spacing.lg,
     pointerEvents: 'auto',
   },

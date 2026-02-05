@@ -45,8 +45,8 @@ export function watchLocation(callback) {
       null,
       { 
         enableHighAccuracy: true,
-        maximumAge: 0, // Pas de cache, toujours fresh
-        timeout: 5000,
+        maximumAge: 2000, // Cache 2s pour éviter trop de demandes de permission
+        timeout: 10000,
       }
     );
     return { remove: () => navigator.geolocation.clearWatch(watchId) };
@@ -55,9 +55,9 @@ export function watchLocation(callback) {
     const Location = require('expo-location');
     Location.watchPositionAsync(
       { 
-        accuracy: Location.Accuracy.BestForNavigation, // Meilleure précision pour navigation
-        distanceInterval: 1, // Update tous les 1 mètre (au lieu de 5)
-        timeInterval: 500, // Update toutes les 0.5 secondes (au lieu de 3s)
+        accuracy: Location.Accuracy.High, // High au lieu de BestForNavigation (moins agressif)
+        distanceInterval: 3, // Update tous les 3 mètres (au lieu de 1)
+        timeInterval: 2000, // Update toutes les 2 secondes (au lieu de 0.5s)
       },
       callback
     ).then(s => { sub = s; });

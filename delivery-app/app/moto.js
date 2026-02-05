@@ -46,8 +46,10 @@ const MAP_STYLES = [
 ];
 
 const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
-const CAMERA_UPDATE_DELAY = 150; // Délai pour stabiliser (éviter tremblements)
-const BEARING_SMOOTHING = 0.75; // Lissage de la rotation (0 = instantané, 1 = immobile)
+const CAMERA_UPDATE_DELAY = 300; // Délai pour stabiliser (éviter tremblements)
+const BEARING_SMOOTHING = 0.85; // Lissage élevé de la rotation (0 = instantané, 1 = immobile)
+const MIN_SPEED_FOR_ROTATION = 0.3; // Vitesse minimale (m/s) pour faire tourner la carte (~1 km/h)
+const MIN_DISTANCE_FOR_BEARING = 0.00005; // Distance minimale pour recalculer le bearing
 const NAVIGATION_ZOOM = 18; // Zoom fixe pendant navigation
 const NAVIGATION_PITCH = 60; // Inclinaison fixe pendant navigation
 
@@ -142,48 +144,54 @@ export default function MotoScreen() {
   useEffect(() => {
     const sub = watchLocation((loc) => {
       const newLoc = [loc.coords.longitude, loc.coords.latitude];
+      const speed = loc.coords.speed || 0; // Vitesse en m/s
       
-      // Utiliser le heading GPS natif si disponible (plus précis), sinon calculer
-      if (loc.coords.heading !== null && loc.coords.heading !== undefined && loc.coords.heading >= 0) {
-        // GPS heading disponible - direction native
-        userBearingRef.current = loc.coords.heading;
-        prevLocationRef.current = newLoc;
-      } else if (prevLocationRef.current) {
-        // Pas de heading GPS - calculer à partir du mouvement
-        const dist = Math.hypot(newLoc[0] - prevLocationRef.current[0], newLoc[1] - prevLocationRef.current[1]);
-        // Seuil minimal pour calcul de bearing plus réactif
-        if (dist > 0.00001) {
-          userBearingRef.current = calcBearing(prevLocationRef.current, newLoc);
+      // NE METTRE À JOUR LE BEARING QUE SI EN MOUVEMENT
+      const isMoving = speed > MIN_SPEED_FOR_ROTATION;
+      
+      if (isMoving) {
+        // Utiliser le heading GPS natif si disponible ET si en mouvement
+        if (loc.coords.heading !== null && loc.coords.heading !== undefined && loc.coords.heading >= 0) {
+          // GPS heading disponible - direction native
+          userBearingRef.current = loc.coords.heading;
+          prevLocationRef.current = newLoc;
+        } else if (prevLocationRef.current) {
+          // Pas de heading GPS - calculer à partir du mouvement
+          const dist = Math.hypot(newLoc[0] - prevLocationRef.current[0], newLoc[1] - prevLocationRef.current[1]);
+          // Seuil augmenté pour éviter calculs sur micro-mouvements
+          if (dist > MIN_DISTANCE_FOR_BEARING) {
+            userBearingRef.current = calcBearing(prevLocationRef.current, newLoc);
+            prevLocationRef.current = newLoc;
+          }
+        } else {
           prevLocationRef.current = newLoc;
         }
-      } else {
-        prevLocationRef.current = newLoc;
+        
+        // Lissage exponentiel du bearing pour éviter tremblements (SEULEMENT si en mouvement)
+        const rawBearing = userBearingRef.current;
+        const prevSmoothed = smoothedBearingRef.current;
+        
+        // Gérer le wraparound 0°/360°
+        let diff = rawBearing - prevSmoothed;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        
+        // Appliquer lissage ÉLEVÉ
+        smoothedBearingRef.current = (prevSmoothed + diff * (1 - BEARING_SMOOTHING)) % 360;
+        if (smoothedBearingRef.current < 0) smoothedBearingRef.current += 360;
       }
-      
-      // Lissage exponentiel du bearing pour éviter tremblements
-      const rawBearing = userBearingRef.current;
-      const prevSmoothed = smoothedBearingRef.current;
-      
-      // Gérer le wraparound 0°/360°
-      let diff = rawBearing - prevSmoothed;
-      if (diff > 180) diff -= 360;
-      if (diff < -180) diff += 360;
-      
-      // Appliquer lissage
-      smoothedBearingRef.current = (prevSmoothed + diff * (1 - BEARING_SMOOTHING)) % 360;
-      if (smoothedBearingRef.current < 0) smoothedBearingRef.current += 360;
       
       userLocationRef.current = newLoc;
       setUserLocation(newLoc);
 
-      // Smooth camera follow during navigation - Itinéraire toujours vertical
-      if (isNavigatingRef.current && routeTargetRef.current) {
+      // Smooth camera follow during navigation - Itinéraire toujours vertical (SEULEMENT si en mouvement)
+      if (isNavigatingRef.current && routeTargetRef.current && isMoving) {
         if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
         cameraUpdateTimer.current = setTimeout(() => {
           const bearing = smoothedBearingRef.current; // Utiliser bearing lissé
           if (Platform.OS === 'web' && mapRef.current) {
             // Web: rotation auto pour itinéraire vertical (vers le haut)
-            mapRef.current.easeTo(newLoc, NAVIGATION_ZOOM, bearing, NAVIGATION_PITCH, 500);
+            mapRef.current.easeTo(newLoc, NAVIGATION_ZOOM, bearing, NAVIGATION_PITCH, 800);
           } else if (cameraRef.current) {
             // Mobile: rotation auto pour itinéraire vertical (vers le haut)
             cameraRef.current.setCamera({
@@ -191,7 +199,25 @@ export default function MotoScreen() {
               zoomLevel: NAVIGATION_ZOOM,
               pitch: NAVIGATION_PITCH,
               heading: bearing, // Heading = direction de déplacement -> itinéraire vers le haut
-              animationDuration: 500, // Fluide et stable
+              animationDuration: 800, // Plus lent pour plus de stabilité
+              animationMode: 'easeTo',
+            });
+          }
+        }, CAMERA_UPDATE_DELAY);
+      } else if (isNavigatingRef.current && routeTargetRef.current && !isMoving) {
+        // Si en navigation mais immobile: juste centrer sans rotation
+        if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
+        cameraUpdateTimer.current = setTimeout(() => {
+          if (Platform.OS === 'web' && mapRef.current) {
+            // Juste centrer, pas de rotation
+            mapRef.current.easeTo(newLoc, NAVIGATION_ZOOM, smoothedBearingRef.current, NAVIGATION_PITCH, 300);
+          } else if (cameraRef.current) {
+            cameraRef.current.setCamera({
+              centerCoordinate: newLoc,
+              zoomLevel: NAVIGATION_ZOOM,
+              pitch: NAVIGATION_PITCH,
+              heading: smoothedBearingRef.current, // Garder bearing actuel
+              animationDuration: 300,
               animationMode: 'easeTo',
             });
           }

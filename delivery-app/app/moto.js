@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getDirectionsUrl, parseGoogleMapsUrl, MAPBOX_TOKEN } from '../src/utils/mapbox';
+import { GOOGLE_PLACES_API_KEY } from '../src/utils/config';
 import { getCurrentLocation, watchLocation } from '../src/utils/location';
 import { searchPlaces } from '../src/utils/search';
 import {
@@ -677,8 +678,8 @@ export default function MotoScreen() {
     }
     searchTimerRef.current = setTimeout(async () => {
       try {
-        // Recherche de lieux uniquement (pas de clients)
-        const results = await searchPlaces(text, userLocation, MAPBOX_TOKEN);
+        // Recherche de lieux avec Google Places (meilleure couverture CI)
+        const results = await searchPlaces(text, userLocation, GOOGLE_PLACES_API_KEY);
         
         if (results.length > 0) {
           setSearchResults(results);
@@ -692,7 +693,7 @@ export default function MotoScreen() {
         setSearchResults([]);
         setShowSearchResults(false);
       }
-    }, 200); // Réduit à 200ms pour réactivité
+    }, 300); // Augmenté à 300ms pour réduire le nombre de requêtes API
   }, [userLocation]);
 
   const handleSelectSearchResult = useCallback((result) => {

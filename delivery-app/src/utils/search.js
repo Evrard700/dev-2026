@@ -129,32 +129,66 @@ export function searchClients(query, clients, orders = []) {
   return results;
 }
 
-// Recherche de lieux uniquement (Mapbox seulement)
-export async function searchPlaces(query, userLocation, mapboxToken) {
+// Recherche de lieux avec Google Places API (meilleure couverture Côte d'Ivoire)
+export async function searchPlaces(query, userLocation, googleApiKey) {
   if (!query || !query.trim()) return [];
   
   try {
-    const proximity = userLocation ? `&proximity=${userLocation[0]},${userLocation[1]}` : '';
-    const bbox = userLocation
-      ? `&bbox=${userLocation[0] - 0.5},${userLocation[1] - 0.5},${userLocation[0] + 0.5},${userLocation[1] + 0.5}`
+    // Construire l'URL Google Places Autocomplete
+    const location = userLocation 
+      ? `&location=${userLocation[1]},${userLocation[0]}&radius=50000` // 50km radius
       : '';
     
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxToken}&limit=10&language=fr${proximity}${bbox}&types=poi,address,place,locality,neighborhood&autocomplete=true&fuzzyMatch=true`;
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${googleApiKey}&language=fr${location}&components=country:ci`; // Restreint à la Côte d'Ivoire
     
     const res = await fetch(url);
     const data = await res.json();
     
-    return (data.features || []).map(f => ({
-      type: 'place',
-      id: f.id,
-      name: f.text,
-      subtitle: f.place_name,
-      fullName: f.place_name,
-      coords: f.center,
-      category: f.properties?.category || '',
-    }));
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      console.warn('Google Places API error:', data.status, data.error_message);
+      return [];
+    }
+    
+    if (!data.predictions || data.predictions.length === 0) {
+      return [];
+    }
+    
+    // Pour chaque résultat, récupérer les détails (coordonnées)
+    const detailedResults = await Promise.all(
+      data.predictions.slice(0, 10).map(async (prediction) => {
+        try {
+          const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&fields=geometry,name,formatted_address,types&key=${googleApiKey}`;
+          const detailsRes = await fetch(detailsUrl);
+          const detailsData = await detailsRes.json();
+          
+          if (detailsData.status === 'OK' && detailsData.result) {
+            const result = detailsData.result;
+            return {
+              type: 'place',
+              id: prediction.place_id,
+              name: result.name || prediction.structured_formatting?.main_text || prediction.description,
+              subtitle: result.formatted_address || prediction.description,
+              fullName: result.formatted_address || prediction.description,
+              coords: [
+                result.geometry.location.lng,
+                result.geometry.location.lat
+              ],
+              category: result.types?.[0] || '',
+            };
+          }
+          return null;
+        } catch (e) {
+          console.warn('Error fetching place details:', e);
+          return null;
+        }
+      })
+    );
+    
+    // Filtrer les résultats null
+    return detailedResults.filter(r => r !== null);
+    
   } catch (e) {
-    console.warn('Mapbox search error:', e);
+    console.warn('Google Places search error:', e);
     return [];
   }
 }

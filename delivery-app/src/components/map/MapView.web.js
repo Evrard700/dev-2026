@@ -135,32 +135,6 @@ const WebMapView = forwardRef(({
     onLongPressRef.current = onLongPress;
   }, [onLongPress]);
 
-  // Update gesture controls dynamically when disableGestures changes
-  useEffect(() => {
-    const map = mapInstance.current;
-    if (!map) return;
-
-    try {
-      if (disableGestures) {
-        // Mode navigation: désactiver tous les gestes
-        map.dragPan.disable();
-        map.scrollZoom.disable();
-        map.doubleClickZoom.disable();
-        map.touchZoomRotate.disable();
-        map.dragRotate.disable();
-      } else {
-        // Mode normal: réactiver les gestes
-        map.dragPan.enable();
-        map.scrollZoom.enable();
-        map.doubleClickZoom.enable();
-        map.touchZoomRotate.enable();
-        map.dragRotate.enable();
-      }
-    } catch (e) {
-      console.warn('Error toggling gestures:', e);
-    }
-  }, [disableGestures]);
-
   useEffect(() => {
     onMarkerPressRef.current = onMarkerPress;
   }, [onMarkerPress]);
@@ -189,14 +163,14 @@ const WebMapView = forwardRef(({
       pitch: pitch,
       bearing: bearing,
       antialias: true,
-      // Enhanced gesture controls - Désactivés en mode navigation
-      touchZoomRotate: !disableGestures,
-      touchPitch: !disableGestures,
-      dragRotate: !disableGestures,
-      pitchWithRotate: !disableGestures,
-      dragPan: !disableGestures, // Empêche de déplacer la carte
-      scrollZoom: !disableGestures, // Empêche de zoomer
-      doubleClickZoom: !disableGestures, // Empêche double-clic zoom
+      // Enhanced gesture controls - Toujours actifs pour manipulation libre
+      touchZoomRotate: true,
+      touchPitch: true,
+      dragRotate: true,
+      pitchWithRotate: true,
+      dragPan: true, // Toujours actif
+      scrollZoom: true, // Toujours actif
+      doubleClickZoom: true, // Toujours actif
       // Smooth animations
       fadeDuration: 300,
       // Better performance

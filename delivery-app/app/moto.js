@@ -46,7 +46,8 @@ const MAP_STYLES = [
 ];
 
 const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
-const CAMERA_UPDATE_DELAY = 0; // Update caméra immédiatement (pas de délai)
+const CAMERA_UPDATE_DELAY = 200; // Délai pour stabiliser (éviter tremblements)
+const BEARING_SMOOTHING = 0.7; // Lissage de la rotation (0 = instantané, 1 = immobile)
 
 // Calculate bearing between two points
 function calcBearing(from, to) {
@@ -68,6 +69,7 @@ export default function MotoScreen() {
   const routeTargetRef = useRef(null);
   const prevLocationRef = useRef(null);
   const userBearingRef = useRef(0);
+  const smoothedBearingRef = useRef(0); // Bearing lissé pour éviter tremblements
 
   const [userLocation, setUserLocation] = useState(null);
   const userLocationRef = useRef(null);
@@ -156,25 +158,38 @@ export default function MotoScreen() {
         prevLocationRef.current = newLoc;
       }
       
+      // Lissage exponentiel du bearing pour éviter tremblements
+      const rawBearing = userBearingRef.current;
+      const prevSmoothed = smoothedBearingRef.current;
+      
+      // Gérer le wraparound 0°/360°
+      let diff = rawBearing - prevSmoothed;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      
+      // Appliquer lissage
+      smoothedBearingRef.current = (prevSmoothed + diff * (1 - BEARING_SMOOTHING)) % 360;
+      if (smoothedBearingRef.current < 0) smoothedBearingRef.current += 360;
+      
       userLocationRef.current = newLoc;
       setUserLocation(newLoc);
 
-      // Smooth camera follow during navigation - Mode navigation strict
+      // Smooth camera follow during navigation - Mode navigation souple
       if (isNavigatingRef.current && routeTargetRef.current) {
         if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
         cameraUpdateTimer.current = setTimeout(() => {
-          const bearing = userBearingRef.current;
+          const bearing = smoothedBearingRef.current; // Utiliser bearing lissé
           if (Platform.OS === 'web' && mapRef.current) {
-            // Web: suivi fluide avec rotation automatique quasi-instantanée
-            mapRef.current.easeTo(newLoc, 18, bearing, 65, 50); // 50ms = très rapide mais fluide
+            // Web: suivi fluide avec rotation lissée
+            mapRef.current.easeTo(newLoc, 18, bearing, 65, 400); // 400ms = fluide et stable
           } else if (cameraRef.current) {
-            // Mobile: suivi fluide avec rotation automatique quasi-instantanée
+            // Mobile: suivi fluide avec rotation lissée
             cameraRef.current.setCamera({
               centerCoordinate: newLoc,
               zoomLevel: 18,
               pitch: 65,
               heading: bearing,
-              animationDuration: 50, // 50ms = très rapide mais fluide
+              animationDuration: 400, // 400ms = fluide et stable
               animationMode: 'easeTo',
             });
           }
@@ -651,7 +666,7 @@ export default function MotoScreen() {
           markers={webMarkers}
           routeGeoJSON={routeGeoJSON}
           userLocation={userLocation}
-          disableGestures={isNavigating} // Mode navigation: désactive les gestes utilisateur
+          disableGestures={false} // Gestes toujours actifs pour manipulation libre
         />
       );
     }
@@ -662,10 +677,10 @@ export default function MotoScreen() {
         style={styles.map}
         styleURL={mapStyle}
         onLongPress={handleMapLongPress}
-        pitchEnabled={!isNavigating} // Désactivé en mode navigation
-        rotateEnabled={!isNavigating} // Désactivé en mode navigation
-        scrollEnabled={!isNavigating} // Désactivé en mode navigation
-        zoomEnabled={!isNavigating} // Désactivé en mode navigation
+        pitchEnabled={true} // Toujours actif pour manipulation libre
+        rotateEnabled={true} // Toujours actif pour rotation 360°
+        scrollEnabled={true} // Toujours actif pour pan
+        zoomEnabled={true} // Toujours actif pour zoom/dezoom
         compassEnabled={true}
         scaleBarEnabled={false}
       >

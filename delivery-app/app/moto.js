@@ -333,11 +333,6 @@ export default function MotoScreen() {
           Alert.alert('Erreur', 'Impossible d\'ajouter le client: ' + error.message);
         }
       });
-      
-      // Refresh from backend after a delay to get real ID
-      setTimeout(() => {
-        getMotoClients().then(setClients).catch(console.error);
-      }, 2000);
     } catch (error) {
       console.error('Error adding client:', error);
       if (Platform.OS === 'web') {
@@ -409,14 +404,10 @@ export default function MotoScreen() {
           );
           
           if (realClient) {
-            // Update order with real client ID
+            // Update order with real client ID in backend only
             const orderWithRealClientId = { ...newOrder, clientId: realClient.id };
             addMotoOrder(orderWithRealClientId).catch(console.error);
-            
-            // Refresh to show order with correct client ID
-            setTimeout(() => {
-              getMotoOrders().then(setOrders).catch(console.error);
-            }, 1000);
+            // Don't refresh - keep optimistic order visible
           } else {
             console.error('Client non synchronisé après 3s');
           }
@@ -433,11 +424,7 @@ export default function MotoScreen() {
             Alert.alert('Erreur', 'Impossible d\'ajouter la commande: ' + error.message);
           }
         });
-        
-        // Refresh from backend after a delay to get real ID
-        setTimeout(() => {
-          getMotoOrders().then(setOrders).catch(console.error);
-        }, 2000);
+        // Don't refresh - keep optimistic order visible
       }
     } catch (error) {
       console.error('Error adding order:', error);

@@ -81,14 +81,14 @@ const WebMapView = forwardRef(({
         mapInstance.current.easeTo({
           center: centerCoordinate,
           zoom: zoomLevel ?? mapInstance.current.getZoom(),
-          pitch: pitchVal ?? 0,
-          bearing: bearingVal ?? 0,
+          pitch: pitchVal ?? mapInstance.current.getPitch(),
+          bearing: bearingVal ?? mapInstance.current.getBearing(),
           duration: animationDuration || 1000,
           easing: (t) => t * (2 - t), // ease-out quad for smoother animation
         });
       }
     },
-    getMap: () => mapInstance.current,
+    getMap: () => mapInstance.current, // Expose mapbox-gl instance
     // New methods for advanced controls
     zoomIn: (duration = 300) => {
       if (mapInstance.current) {

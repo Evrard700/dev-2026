@@ -306,8 +306,9 @@ export default function MotoScreen() {
         const parsed = parseGoogleMapsUrl(formData.googleLink);
         if (parsed) coord = [parsed.longitude, parsed.latitude];
       }
+      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const newClient = {
-        id: Date.now().toString(),
+        id: tempId,
         nom: formData.nom,
         numero: formData.numero,
         adresse: formData.adresse,
@@ -316,8 +317,27 @@ export default function MotoScreen() {
         latitude: coord[1],
         createdAt: new Date().toISOString(),
       };
-      const updated = await addMotoClient(newClient);
-      setClients(updated);
+      
+      // Add to UI IMMEDIATELY (optimistic)
+      const optimisticClients = [newClient, ...clients];
+      setClients(optimisticClients);
+      
+      // Sync to backend in background (don't await)
+      addMotoClient(newClient)
+        .then(updated => {
+          // Replace temp client with real one
+          setClients(updated);
+        })
+        .catch(error => {
+          console.error('Failed to add client:', error);
+          // Remove temp client on error
+          setClients(clients);
+          if (Platform.OS === 'web') {
+            alert('Erreur lors de l\'ajout du client: ' + error.message);
+          } else {
+            Alert.alert('Erreur', 'Impossible d\'ajouter le client: ' + error.message);
+          }
+        });
     } catch (error) {
       console.error('Error adding client:', error);
       if (Platform.OS === 'web') {
@@ -326,16 +346,31 @@ export default function MotoScreen() {
         Alert.alert('Erreur', 'Impossible d\'ajouter le client: ' + error.message);
       }
     }
-  }, []);
+  }, [clients]);
 
   const handleDeleteClient = useCallback(async (clientId) => {
-    const updated = await deleteMotoClient(clientId);
-    setClients(updated);
-    const updatedOrders = await getMotoOrders();
-    setOrders(updatedOrders);
+    // Remove from UI IMMEDIATELY (optimistic)
+    const optimisticClients = clients.filter(c => c.id !== clientId);
+    const optimisticOrders = orders.filter(o => o.clientId !== clientId);
+    setClients(optimisticClients);
+    setOrders(optimisticOrders);
     setShowClientPopup(false);
     setSelectedClient(null);
-  }, []);
+    
+    // Sync to backend in background (don't await)
+    deleteMotoClient(clientId)
+      .then(updated => {
+        setClients(updated);
+        return getMotoOrders();
+      })
+      .then(setOrders)
+      .catch(err => {
+        console.error('Failed to delete client:', err);
+        // Refresh from backend on error
+        getMotoClients().then(setClients).catch(console.error);
+        getMotoOrders().then(setOrders).catch(console.error);
+      });
+  }, [clients, orders]);
 
   const handleAddOrder = useCallback(async (clientId, orderData) => {
     try {
@@ -345,8 +380,9 @@ export default function MotoScreen() {
         throw new Error('Client introuvable');
       }
       
+      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const newOrder = {
-        id: Date.now().toString(),
+        id: tempId,
         clientId,
         clientNom: client.nom,
         clientNumero: client.numero,
@@ -358,8 +394,27 @@ export default function MotoScreen() {
         checked: false,
         createdAt: new Date().toISOString(),
       };
-      const updated = await addMotoOrder(newOrder);
-      setOrders(updated);
+      
+      // Add to UI IMMEDIATELY (optimistic)
+      const optimisticOrders = [newOrder, ...orders];
+      setOrders(optimisticOrders);
+      
+      // Sync to backend in background (don't await)
+      addMotoOrder(newOrder)
+        .then(updated => {
+          // Replace temp order with real one
+          setOrders(updated);
+        })
+        .catch(error => {
+          console.error('Failed to add order:', error);
+          // Remove temp order on error
+          setOrders(orders);
+          if (Platform.OS === 'web') {
+            alert('Erreur lors de l\'ajout de la commande: ' + error.message);
+          } else {
+            Alert.alert('Erreur', 'Impossible d\'ajouter la commande: ' + error.message);
+          }
+        });
     } catch (error) {
       console.error('Error adding order:', error);
       if (Platform.OS === 'web') {
@@ -368,20 +423,48 @@ export default function MotoScreen() {
         Alert.alert('Erreur', 'Impossible d\'ajouter la commande: ' + error.message);
       }
     }
-  }, [clients]);
+  }, [clients, orders]);
 
   const handleToggleOrder = useCallback(async (orderId) => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
-      const updated = await updateMotoOrder(orderId, { checked: !order.checked });
-      setOrders(updated);
+      // Update UI IMMEDIATELY (optimistic)
+      const optimisticOrders = orders.map(o => 
+        o.id === orderId ? { ...o, checked: !o.checked } : o
+      );
+      setOrders(optimisticOrders);
+      
+      // Sync to backend in background (don't await)
+      updateMotoOrder(orderId, { checked: !order.checked })
+        .then(updated => {
+          // Refresh with real data from backend
+          setOrders(updated);
+        })
+        .catch(err => {
+          console.error('Failed to toggle order:', err);
+          // Revert on error
+          setOrders(orders);
+        });
     }
   }, [orders]);
 
   const handleDeleteOrder = useCallback(async (orderId) => {
-    const updated = await deleteMotoOrder(orderId);
-    setOrders(updated);
-  }, []);
+    // Remove from UI IMMEDIATELY (optimistic)
+    const optimisticOrders = orders.filter(o => o.id !== orderId);
+    setOrders(optimisticOrders);
+    
+    // Sync to backend in background (don't await)
+    deleteMotoOrder(orderId)
+      .then(updated => {
+        // Refresh with real data
+        setOrders(updated);
+      })
+      .catch(err => {
+        console.error('Failed to delete order:', err);
+        // Revert on error
+        getMotoOrders().then(setOrders).catch(console.error);
+      });
+  }, [orders]);
 
   const handleNavigateToClient = useCallback(async (client) => {
     if (!userLocation) {

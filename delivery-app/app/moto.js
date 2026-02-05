@@ -53,6 +53,7 @@ const MIN_SPEED_FOR_ROTATION = 0.3; // Vitesse minimale (m/s) pour faire tourner
 const MIN_DISTANCE_FOR_BEARING = 0.00005; // Distance minimale pour recalculer le bearing
 const NAVIGATION_ZOOM = 18; // Zoom fixe pendant navigation
 const NAVIGATION_PITCH = 60; // Inclinaison fixe pendant navigation
+const MIN_TURN_ANGLE = 35; // Angle minimal (degrés) pour considérer un virage/carrefour
 
 // Calculate bearing between two points
 function calcBearing(from, to) {
@@ -75,6 +76,7 @@ export default function MotoScreen() {
   const prevLocationRef = useRef(null);
   const userBearingRef = useRef(0);
   const smoothedBearingRef = useRef(0); // Bearing lissé pour éviter tremblements
+  const lastMapBearingRef = useRef(0); // Dernier bearing appliqué à la carte (pour détecter virages)
 
   const [userLocation, setUserLocation] = useState(null);
   const userLocationRef = useRef(null);
@@ -185,42 +187,51 @@ export default function MotoScreen() {
       userLocationRef.current = newLoc;
       setUserLocation(newLoc);
 
-      // Smooth camera follow during navigation - Itinéraire toujours vertical (SEULEMENT si en mouvement)
-      if (isNavigatingRef.current && routeTargetRef.current && isMoving) {
+      // Navigation camera: Carte FIXE, ne tourne QUE sur les virages importants
+      if (isNavigatingRef.current && routeTargetRef.current) {
         if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
         cameraUpdateTimer.current = setTimeout(() => {
-          const bearing = smoothedBearingRef.current; // Utiliser bearing lissé
-          if (Platform.OS === 'web' && mapRef.current) {
-            // Web: rotation auto pour itinéraire vertical (vers le haut)
-            mapRef.current.easeTo(newLoc, NAVIGATION_ZOOM, bearing, NAVIGATION_PITCH, 800);
-          } else if (cameraRef.current) {
-            // Mobile: rotation auto pour itinéraire vertical (vers le haut)
-            cameraRef.current.setCamera({
-              centerCoordinate: newLoc,
-              zoomLevel: NAVIGATION_ZOOM,
-              pitch: NAVIGATION_PITCH,
-              heading: bearing, // Heading = direction de déplacement -> itinéraire vers le haut
-              animationDuration: 800, // Plus lent pour plus de stabilité
-              animationMode: 'easeTo',
-            });
-          }
-        }, CAMERA_UPDATE_DELAY);
-      } else if (isNavigatingRef.current && routeTargetRef.current && !isMoving) {
-        // Si en navigation mais immobile: juste centrer sans rotation
-        if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
-        cameraUpdateTimer.current = setTimeout(() => {
-          if (Platform.OS === 'web' && mapRef.current) {
-            // Juste centrer, pas de rotation
-            mapRef.current.easeTo(newLoc, NAVIGATION_ZOOM, smoothedBearingRef.current, NAVIGATION_PITCH, 300);
-          } else if (cameraRef.current) {
-            cameraRef.current.setCamera({
-              centerCoordinate: newLoc,
-              zoomLevel: NAVIGATION_ZOOM,
-              pitch: NAVIGATION_PITCH,
-              heading: smoothedBearingRef.current, // Garder bearing actuel
-              animationDuration: 300,
-              animationMode: 'easeTo',
-            });
+          const currentBearing = smoothedBearingRef.current;
+          const lastBearing = lastMapBearingRef.current;
+          
+          // Calculer différence d'angle (gérer wraparound 0°/360°)
+          let bearingDiff = currentBearing - lastBearing;
+          if (bearingDiff > 180) bearingDiff -= 360;
+          if (bearingDiff < -180) bearingDiff += 360;
+          
+          // Détecter si c'est un VIRAGE (changement > MIN_TURN_ANGLE)
+          const isTurn = Math.abs(bearingDiff) > MIN_TURN_ANGLE && isMoving;
+          
+          if (isTurn) {
+            // VIRAGE DÉTECTÉ → Redresser la carte verticalement
+            lastMapBearingRef.current = currentBearing; // Mémoriser nouveau bearing
+            
+            if (Platform.OS === 'web' && mapRef.current) {
+              mapRef.current.easeTo(newLoc, NAVIGATION_ZOOM, currentBearing, NAVIGATION_PITCH, 1000);
+            } else if (cameraRef.current) {
+              cameraRef.current.setCamera({
+                centerCoordinate: newLoc,
+                zoomLevel: NAVIGATION_ZOOM,
+                pitch: NAVIGATION_PITCH,
+                heading: currentBearing, // Nouvelle direction après virage
+                animationDuration: 1000,
+                animationMode: 'easeTo',
+              });
+            }
+          } else {
+            // PAS DE VIRAGE → Juste centrer, garder même orientation
+            if (Platform.OS === 'web' && mapRef.current) {
+              mapRef.current.easeTo(newLoc, NAVIGATION_ZOOM, lastBearing, NAVIGATION_PITCH, 300);
+            } else if (cameraRef.current) {
+              cameraRef.current.setCamera({
+                centerCoordinate: newLoc,
+                zoomLevel: NAVIGATION_ZOOM,
+                pitch: NAVIGATION_PITCH,
+                heading: lastBearing, // Garder orientation actuelle
+                animationDuration: 300,
+                animationMode: 'easeTo',
+              });
+            }
           }
         }, CAMERA_UPDATE_DELAY);
       }
@@ -498,6 +509,7 @@ export default function MotoScreen() {
       const navBearing = calcBearing(userLocation, [client.longitude, client.latitude]);
       userBearingRef.current = navBearing;
       smoothedBearingRef.current = navBearing; // Initialiser bearing lissé
+      lastMapBearingRef.current = navBearing; // Initialiser bearing de la carte
       // Aligner caméra immédiatement: itinéraire vertical vers le haut
       if (Platform.OS === 'web' && mapRef.current) {
         mapRef.current.easeTo(userLocation, NAVIGATION_ZOOM, navBearing, NAVIGATION_PITCH, 1000);
@@ -548,6 +560,7 @@ export default function MotoScreen() {
       routeIntervalRef.current = null;
     }
     // Reset camera to normal view
+    lastMapBearingRef.current = 0; // Réinitialiser bearing de la carte
     if (userLocation) {
       if (Platform.OS === 'web' && mapRef.current) {
         mapRef.current.easeTo(userLocation, 15, 0, 0);

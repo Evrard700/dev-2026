@@ -76,29 +76,7 @@ export async function addMotoClient(client) {
       throw new Error('User not authenticated');
     }
 
-    // Generate temporary ID
-    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Create optimistic client
-    const optimisticClient = {
-      id: tempId,
-      nom: client.nom || client.name,
-      numero: client.numero || client.phone,
-      adresse: client.adresse || client.address,
-      neighborhood: client.neighborhood || null,
-      latitude: client.latitude || client.lat || null,
-      longitude: client.longitude || client.lng || null,
-      googleLink: client.googleLink || client.notes || null,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Update cache IMMEDIATELY
-    const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
-    const currentClients = cached ? JSON.parse(cached) : [];
-    const updatedClients = [optimisticClient, ...currentClients];
-    await AsyncStorage.setItem(MOTO_CLIENTS_CACHE_KEY, JSON.stringify(updatedClients));
-
-    // Sync to Supabase in background (don't await)
+    // Sync to Supabase in background (don't await, let React handle optimistic UI)
     const clientData = {
       user_id: userId,
       name: client.nom || client.name,
@@ -120,13 +98,14 @@ export async function addMotoClient(client) {
           console.error('Background sync failed:', error);
           return;
         }
-        // Replace temp client with real one in cache
+        // Refresh cache from Supabase silently
         getMotoClients().catch(console.error);
       })
       .catch(console.error);
 
-    // Return immediately with optimistic data
-    return updatedClients;
+    // Return current clients from cache (UI handled by React state)
+    const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
   } catch (e) {
     console.error('Error adding moto client:', e);
     throw e;
@@ -174,19 +153,7 @@ export async function deleteMotoClient(clientId) {
       throw new Error('User not authenticated');
     }
 
-    // Update cache IMMEDIATELY (optimistic delete)
-    const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
-    const currentClients = cached ? JSON.parse(cached) : [];
-    const updatedClients = currentClients.filter(c => c.id !== clientId);
-    await AsyncStorage.setItem(MOTO_CLIENTS_CACHE_KEY, JSON.stringify(updatedClients));
-
-    // Also delete related orders from cache
-    const ordersCached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
-    const currentOrders = ordersCached ? JSON.parse(ordersCached) : [];
-    const updatedOrders = currentOrders.filter(o => o.clientId !== clientId);
-    await AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(updatedOrders));
-
-    // Delete from Supabase in background (don't await)
+    // Delete from Supabase in background (don't await, let React handle optimistic UI)
     supabase
       .from('moto_clients')
       .delete()
@@ -195,19 +162,17 @@ export async function deleteMotoClient(clientId) {
       .then(({ error }) => {
         if (error) {
           console.error('Background delete failed:', error);
-          // Revert optimistic delete on error
-          AsyncStorage.setItem(MOTO_CLIENTS_CACHE_KEY, cached || '[]').catch(console.error);
-          AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, ordersCached || '[]').catch(console.error);
           return;
         }
-        // Refresh from Supabase
+        // Refresh cache from Supabase silently
         getMotoClients().catch(console.error);
         getMotoOrders().catch(console.error);
       })
       .catch(console.error);
 
-    // Return immediately with optimistic data
-    return updatedClients;
+    // Return current clients from cache (UI handled by React state)
+    const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
   } catch (e) {
     console.error('Error deleting moto client:', e);
     throw e;
@@ -294,30 +259,6 @@ export async function addMotoOrder(order) {
       throw new Error('User not authenticated');
     }
 
-    // Generate temporary ID
-    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Create optimistic order
-    const optimisticOrder = {
-      id: tempId,
-      clientId: order.clientId,
-      clientNom: order.clientNom || order.clientName,
-      clientNumero: order.clientNumero || order.clientPhone,
-      clientAdresse: order.clientAdresse || order.clientAddress,
-      produit: order.produit || '',
-      quantite: order.quantite || '',
-      prix: order.prix || order.price || 0,
-      photo: order.photo || null,
-      checked: order.checked || false,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Update cache IMMEDIATELY
-    const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
-    const currentOrders = cached ? JSON.parse(cached) : [];
-    const updatedOrders = [optimisticOrder, ...currentOrders];
-    await AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(updatedOrders));
-
     // Store extra fields (produit, quantite, photo) in notes as JSON
     const extraData = {
       produit: order.produit || '',
@@ -337,7 +278,7 @@ export async function addMotoOrder(order) {
       delivered_at: order.checked ? new Date().toISOString() : null,
     };
 
-    // Sync to Supabase in background (don't await)
+    // Sync to Supabase in background (don't await, let React handle optimistic UI)
     supabase
       .from('moto_orders')
       .insert([orderData])
@@ -348,13 +289,14 @@ export async function addMotoOrder(order) {
           console.error('Background sync failed:', error);
           return;
         }
-        // Replace temp order with real one in cache
+        // Refresh cache from Supabase silently
         getMotoOrders().catch(console.error);
       })
       .catch(console.error);
 
-    // Return immediately with optimistic data
-    return updatedOrders;
+    // Return current orders from cache (UI handled by React state)
+    const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
   } catch (e) {
     console.error('Error adding moto order:', e);
     throw e;
@@ -367,21 +309,6 @@ export async function updateMotoOrder(orderId, updates) {
     if (!userId) {
       throw new Error('User not authenticated');
     }
-
-    // Update cache IMMEDIATELY (optimistic update)
-    const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
-    const currentOrders = cached ? JSON.parse(cached) : [];
-    const updatedOrders = currentOrders.map(order => {
-      if (order.id === orderId) {
-        return {
-          ...order,
-          ...updates,
-          checked: updates.checked !== undefined ? updates.checked : order.checked,
-        };
-      }
-      return order;
-    });
-    await AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(updatedOrders));
 
     // Prepare Supabase update
     const updateData = {};
@@ -401,7 +328,7 @@ export async function updateMotoOrder(orderId, updates) {
       updateData.delivered_at = updates.deliveredAt || updates.delivered_at || null;
     }
 
-    // Sync to Supabase in background (don't await)
+    // Sync to Supabase in background (don't await, let React handle optimistic UI)
     supabase
       .from('moto_orders')
       .update(updateData)
@@ -410,17 +337,16 @@ export async function updateMotoOrder(orderId, updates) {
       .then(({ error }) => {
         if (error) {
           console.error('Background sync failed:', error);
-          // Revert optimistic update on error
-          AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, cached || '[]').catch(console.error);
           return;
         }
-        // Refresh from Supabase to get latest state
+        // Refresh cache from Supabase silently
         getMotoOrders().catch(console.error);
       })
       .catch(console.error);
 
-    // Return immediately with optimistic data
-    return updatedOrders;
+    // Return current orders from cache (UI handled by React state)
+    const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
   } catch (e) {
     console.error('Error updating moto order:', e);
     throw e;
@@ -434,13 +360,7 @@ export async function deleteMotoOrder(orderId) {
       throw new Error('User not authenticated');
     }
 
-    // Update cache IMMEDIATELY (optimistic delete)
-    const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
-    const currentOrders = cached ? JSON.parse(cached) : [];
-    const updatedOrders = currentOrders.filter(o => o.id !== orderId);
-    await AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(updatedOrders));
-
-    // Delete from Supabase in background (don't await)
+    // Delete from Supabase in background (don't await, let React handle optimistic UI)
     supabase
       .from('moto_orders')
       .delete()
@@ -449,17 +369,16 @@ export async function deleteMotoOrder(orderId) {
       .then(({ error }) => {
         if (error) {
           console.error('Background delete failed:', error);
-          // Revert optimistic delete on error
-          AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, cached || '[]').catch(console.error);
           return;
         }
-        // Refresh from Supabase
+        // Refresh cache from Supabase silently
         getMotoOrders().catch(console.error);
       })
       .catch(console.error);
 
-    // Return immediately with optimistic data
-    return updatedOrders;
+    // Return current orders from cache (UI handled by React state)
+    const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
   } catch (e) {
     console.error('Error deleting moto order:', e);
     throw e;

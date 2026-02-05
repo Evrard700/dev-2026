@@ -32,18 +32,18 @@ import ClientFormModal from '../src/components/ClientFormModal';
 import MotoClientPopup from '../src/components/MotoClientPopup';
 import SettingsPanel from '../src/components/SettingsPanel';
 
-let MapboxGL, WebMapView;
+let MapboxGL, GoogleMapView;
 if (Platform.OS === 'web') {
-  WebMapView = require('../src/components/map/MapView.web').default;
+  GoogleMapView = require('../src/components/map/GoogleMapView.web').default;
 } else {
   MapboxGL = require('@rnmapbox/maps').default;
 }
 
 const MAP_STYLES = [
-  { id: 'streets', label: 'Standard', url: 'mapbox://styles/mapbox/streets-v12' },
-  { id: 'satellite', label: 'Satellite', url: 'mapbox://styles/mapbox/satellite-streets-v12' },
-  { id: 'nav', label: 'Navigation', url: 'mapbox://styles/mapbox/navigation-day-v1' },
-  { id: '3d', label: '3D', url: 'mapbox://styles/mapbox/outdoors-v12' },
+  { id: 'roadmap', label: 'Standard', type: 'roadmap' },
+  { id: 'satellite', label: 'Satellite', type: 'satellite' },
+  { id: 'hybrid', label: 'Hybride', type: 'hybrid' },
+  { id: 'terrain', label: 'Terrain', type: 'terrain' },
 ];
 
 const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
@@ -240,19 +240,19 @@ export default function MotoScreen() {
         if (!routeTargetRef.current || !loc) return;
         try {
           const target = routeTargetRef.current;
-          const url = getDirectionsUrl(loc, [target.longitude, target.latitude]);
+          // Call Google Directions API via serverless proxy
+          const url = `/api/directions?originLat=${loc[1]}&originLng=${loc[0]}&destLat=${target.latitude}&destLng=${target.longitude}`;
           const response = await fetch(url);
           const data = await response.json();
-          if (data.routes && data.routes.length > 0) {
-            const route = data.routes[0];
-            const duration = Math.round(route.duration / 60);
-            const distance = (route.distance / 1000).toFixed(1);
+          if (data.route) {
+            const duration = data.duration;
+            const distance = data.distance;
             const sk = `${loc[0].toFixed(4)},${loc[1].toFixed(4)}`;
             const ek = `${target.longitude.toFixed(4)},${target.latitude.toFixed(4)}`;
-            cacheRoute(sk, ek, { geometry: route.geometry, duration, distance });
+            cacheRoute(sk, ek, { geometry: data.route.geometry, duration, distance });
             setRouteGeoJSON({
               type: 'FeatureCollection',
-              features: [{ type: 'Feature', geometry: route.geometry, properties: {} }],
+              features: [{ type: 'Feature', geometry: data.route.geometry, properties: {} }],
             });
             setRouteInfo({
               duration,
@@ -513,15 +513,15 @@ export default function MotoScreen() {
     };
 
     try {
-      const url = getDirectionsUrl(userLocation, [client.longitude, client.latitude]);
+      // Call Google Directions API via serverless proxy
+      const url = `/api/directions?originLat=${userLocation[1]}&originLng=${userLocation[0]}&destLat=${client.latitude}&destLng=${client.longitude}`;
       const response = await fetch(url);
       const data = await response.json();
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const duration = Math.round(route.duration / 60);
-        const distance = (route.distance / 1000).toFixed(1);
-        await cacheRoute(startKey, endKey, { geometry: route.geometry, duration, distance });
-        applyRoute(route.geometry, duration, distance, false);
+      if (data.route) {
+        const duration = data.duration;
+        const distance = data.distance;
+        await cacheRoute(startKey, endKey, { geometry: data.route.geometry, duration, distance });
+        applyRoute(data.route.geometry, duration, distance, false);
       }
     } catch (e) {
       const cached = await getCachedRoute(startKey, endKey);
@@ -746,14 +746,13 @@ export default function MotoScreen() {
   const renderMap = () => {
     if (Platform.OS === 'web') {
       return (
-        <WebMapView
+        <GoogleMapView
           ref={mapRef}
           style={styles.map}
           center={userLocation || [-3.9962, 5.3484]}
           zoom={13}
           pitch={is3D ? 60 : 0}
           bearing={is3D ? 30 : 0}
-          mapStyle={mapStyle}
           onLongPress={handleMapLongPress}
           onMarkerPress={handleMarkerPress}
           onBearingChange={handleBearingChange}
@@ -762,7 +761,6 @@ export default function MotoScreen() {
           markers={webMarkers}
           routeGeoJSON={routeGeoJSON}
           userLocation={userLocation}
-          disableGestures={false} // Gestes toujours actifs pour manipulation libre
         />
       );
     }

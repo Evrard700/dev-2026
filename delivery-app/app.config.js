@@ -65,7 +65,7 @@ module.exports = {
       },
       // Expose environment variables to app
       MAPBOX_PUBLIC_TOKEN: process.env.MAPBOX_PUBLIC_TOKEN,
-      GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY
+      GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY
     }
   }
 };

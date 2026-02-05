@@ -1288,13 +1288,19 @@ export default function MotoScreen() {
                       
                       if (Platform.OS === 'web') {
                         if (confirm(message)) {
+                          // Suppression INSTANTANÉE dans l'UI (optimistic)
+                          const optimisticClients = clients.filter(c => !selectedClients.includes(c.id));
+                          const optimisticOrders = orders.filter(o => !selectedClients.includes(o.clientId));
+                          setClients(optimisticClients);
+                          setOrders(optimisticOrders);
+                          
+                          // Synchronisation en arrière-plan
                           selectedClients.forEach(clientId => {
-                            const optimisticClients = clients.filter(c => c.id !== clientId);
-                            const optimisticOrders = orders.filter(o => o.clientId !== clientId);
-                            setClients(optimisticClients);
-                            setOrders(optimisticOrders);
-                            deleteMotoClient(clientId).catch(console.error);
+                            deleteMotoClient(clientId).catch(err => {
+                              console.error('Failed to delete client:', err);
+                            });
                           });
+                          
                           setSelectedClients([]);
                           setClientsSelectionMode(false);
                         }
@@ -1305,13 +1311,19 @@ export default function MotoScreen() {
                             text: 'Supprimer',
                             style: 'destructive',
                             onPress: () => {
+                              // Suppression INSTANTANÉE dans l'UI (optimistic)
+                              const optimisticClients = clients.filter(c => !selectedClients.includes(c.id));
+                              const optimisticOrders = orders.filter(o => !selectedClients.includes(o.clientId));
+                              setClients(optimisticClients);
+                              setOrders(optimisticOrders);
+                              
+                              // Synchronisation en arrière-plan
                               selectedClients.forEach(clientId => {
-                                const optimisticClients = clients.filter(c => c.id !== clientId);
-                                const optimisticOrders = orders.filter(o => o.clientId !== clientId);
-                                setClients(optimisticClients);
-                                setOrders(optimisticOrders);
-                                deleteMotoClient(clientId).catch(console.error);
+                                deleteMotoClient(clientId).catch(err => {
+                                  console.error('Failed to delete client:', err);
+                                });
                               });
+                              
                               setSelectedClients([]);
                               setClientsSelectionMode(false);
                             }

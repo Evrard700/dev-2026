@@ -19,11 +19,10 @@ try {
   // expo-image-picker not available
 }
 
-export default function ClientFormModal({ visible, onClose, onSubmit, coordinate, showGoogleLink = false, showPhotoUpload = false }) {
+export default function ClientFormModal({ visible, onClose, onSubmit, coordinate, showPhotoUpload = false }) {
   const [nom, setNom] = useState('');
   const [numero, setNumero] = useState('');
   const [adresse, setAdresse] = useState('');
-  const [googleLink, setGoogleLink] = useState('');
   const [photo, setPhoto] = useState(null);
 
   const handleSubmit = () => {
@@ -32,14 +31,12 @@ export default function ClientFormModal({ visible, onClose, onSubmit, coordinate
       nom: nom.trim(),
       numero: numero.trim(),
       adresse: adresse.trim(),
-      googleLink: googleLink.trim(),
       photo: photo,
       coordinate,
     });
     setNom('');
     setNumero('');
     setAdresse('');
-    setGoogleLink('');
     setPhoto(null);
     onClose();
   };
@@ -213,23 +210,6 @@ export default function ClientFormModal({ visible, onClose, onSubmit, coordinate
               placeholder="Adresse du client"
               placeholderTextColor="#aaa"
             />
-
-            {showGoogleLink && (
-              <>
-                <Text style={styles.label}>Lien Google Maps</Text>
-                <TextInput
-                  style={styles.input}
-                  value={googleLink}
-                  onChangeText={setGoogleLink}
-                  placeholder="Collez le lien Google Maps ici"
-                  placeholderTextColor="#aaa"
-                  autoCapitalize="none"
-                />
-                <Text style={styles.hint}>
-                  Permet de preciser la position exacte du client
-                </Text>
-              </>
-            )}
 
             <View style={styles.buttons}>
               <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>

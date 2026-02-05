@@ -46,8 +46,10 @@ const MAP_STYLES = [
 ];
 
 const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
-const CAMERA_UPDATE_DELAY = 200; // Délai pour stabiliser (éviter tremblements)
-const BEARING_SMOOTHING = 0.7; // Lissage de la rotation (0 = instantané, 1 = immobile)
+const CAMERA_UPDATE_DELAY = 150; // Délai pour stabiliser (éviter tremblements)
+const BEARING_SMOOTHING = 0.75; // Lissage de la rotation (0 = instantané, 1 = immobile)
+const NAVIGATION_ZOOM = 18; // Zoom fixe pendant navigation
+const NAVIGATION_PITCH = 60; // Inclinaison fixe pendant navigation
 
 // Calculate bearing between two points
 function calcBearing(from, to) {
@@ -174,22 +176,22 @@ export default function MotoScreen() {
       userLocationRef.current = newLoc;
       setUserLocation(newLoc);
 
-      // Smooth camera follow during navigation - Mode navigation souple
+      // Smooth camera follow during navigation - Itinéraire toujours vertical
       if (isNavigatingRef.current && routeTargetRef.current) {
         if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
         cameraUpdateTimer.current = setTimeout(() => {
           const bearing = smoothedBearingRef.current; // Utiliser bearing lissé
           if (Platform.OS === 'web' && mapRef.current) {
-            // Web: suivi fluide avec rotation lissée
-            mapRef.current.easeTo(newLoc, 18, bearing, 65, 400); // 400ms = fluide et stable
+            // Web: rotation auto pour itinéraire vertical (vers le haut)
+            mapRef.current.easeTo(newLoc, NAVIGATION_ZOOM, bearing, NAVIGATION_PITCH, 500);
           } else if (cameraRef.current) {
-            // Mobile: suivi fluide avec rotation lissée
+            // Mobile: rotation auto pour itinéraire vertical (vers le haut)
             cameraRef.current.setCamera({
               centerCoordinate: newLoc,
-              zoomLevel: 18,
-              pitch: 65,
-              heading: bearing,
-              animationDuration: 400, // 400ms = fluide et stable
+              zoomLevel: NAVIGATION_ZOOM,
+              pitch: NAVIGATION_PITCH,
+              heading: bearing, // Heading = direction de déplacement -> itinéraire vers le haut
+              animationDuration: 500, // Fluide et stable
               animationMode: 'easeTo',
             });
           }
@@ -381,17 +383,20 @@ export default function MotoScreen() {
       routeTargetRef.current = client;
       isNavigatingRef.current = true;
       setIsNavigating(true);
+      // Calculer bearing initial vers la destination
       const navBearing = calcBearing(userLocation, [client.longitude, client.latitude]);
       userBearingRef.current = navBearing;
+      smoothedBearingRef.current = navBearing; // Initialiser bearing lissé
+      // Aligner caméra immédiatement: itinéraire vertical vers le haut
       if (Platform.OS === 'web' && mapRef.current) {
-        mapRef.current.easeTo(userLocation, 17, navBearing, 60);
+        mapRef.current.easeTo(userLocation, NAVIGATION_ZOOM, navBearing, NAVIGATION_PITCH, 1000);
       } else if (cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: userLocation,
-          zoomLevel: 17,
-          pitch: 60,
-          heading: navBearing,
-          animationDuration: 1500,
+          zoomLevel: NAVIGATION_ZOOM,
+          pitch: NAVIGATION_PITCH,
+          heading: navBearing, // Itinéraire pointe vers le haut
+          animationDuration: 1000,
         });
       }
     };

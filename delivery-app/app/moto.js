@@ -762,21 +762,16 @@ export default function MotoScreen() {
     return R * c; // Distance en mètres
   }, []);
 
-  const webMarkers = useMemo(() => {
+  // Calculer clients enrichis avec numéros et distances (pour markers ET liste)
+  const enrichedClients = useMemo(() => {
     if (!userLocation) {
       // Si pas de position utilisateur, juste afficher dans l'ordre d'ajout
-      return clients.map((client, index) => {
-        const allChecked = isClientAllChecked(client.id);
-        return {
-          id: client.id,
-          longitude: client.longitude,
-          latitude: client.latitude,
-          color: allChecked ? '#27ae60' : '#c0392b',
-          label: String(index + 1),
-          name: client.nom,
-          showName: mapZoom >= 14,
-        };
-      });
+      return clients.map((client, index) => ({
+        ...client,
+        proximityNumber: index + 1,
+        distanceMeters: null,
+        distanceText: null,
+      }));
     }
 
     // Calculer la VRAIE distance géographique de chaque client
@@ -793,28 +788,38 @@ export default function MotoScreen() {
     // Trier par distance (du plus proche au plus éloigné)
     clientsWithDistance.sort((a, b) => a.distance - b.distance);
 
-    // Assigner numéros selon l'ordre de distance
+    // Assigner numéros et distances
     return clientsWithDistance.map((client, index) => {
-      const allChecked = isClientAllChecked(client.id);
       const distanceMeters = Math.round(client.distance);
-      // Format distance : < 1000m = "350 m", >= 1000m = "1.2 km"
       const distanceText = distanceMeters < 1000 
         ? `${distanceMeters} m`
         : `${(distanceMeters / 1000).toFixed(1)} km`;
       
       return {
-        id: client.id,
-        longitude: client.longitude,
-        latitude: client.latitude,
-        color: allChecked ? '#27ae60' : '#c0392b',
-        label: String(index + 1), // 1 = plus proche, 2 = suivant, etc.
-        name: client.nom,
-        showName: mapZoom >= 14,
+        ...client,
+        proximityNumber: index + 1, // 1 = plus proche, 2 = suivant, etc.
         distanceMeters: distanceMeters,
         distanceText: distanceText, // "350 m" ou "1.2 km"
       };
     });
-  }, [clients, orders, isClientAllChecked, userLocation, mapZoom, calculateDistance]);
+  }, [clients, userLocation, calculateDistance]);
+
+  const webMarkers = useMemo(() => {
+    return enrichedClients.map(client => {
+      const allChecked = isClientAllChecked(client.id);
+      return {
+        id: client.id,
+        longitude: client.longitude,
+        latitude: client.latitude,
+        color: allChecked ? '#27ae60' : '#c0392b',
+        label: String(client.proximityNumber),
+        name: client.nom,
+        showName: mapZoom >= 14,
+        distanceMeters: client.distanceMeters,
+        distanceText: client.distanceText,
+      };
+    });
+  }, [enrichedClients, orders, isClientAllChecked, mapZoom]);
 
   if (loading) {
     return (
@@ -875,85 +880,41 @@ export default function MotoScreen() {
           showsUserHeadingIndicator={true}
           pulsing={{ isEnabled: true, color: '#4285F4', radius: 50 }}
         />
-        {(() => {
-          // Calculate distances and sort clients for mobile (same logic as webMarkers)
-          if (!userLocation) {
-            return clients.map((client, index) => {
-              const allChecked = isClientAllChecked(client.id);
-              const markerColor = allChecked ? '#27ae60' : '#c0392b';
-              return (
-                <MapboxGL.PointAnnotation
-                  key={client.id}
-                  id={`client-${client.id}`}
-                  coordinate={[client.longitude, client.latitude]}
-                  onSelected={() => {
-                    setSelectedClient(client);
-                    setShowClientPopup(true);
-                  }}
-                >
-                  <View style={styles.markerOuter}>
-                    <View style={[styles.markerCircle, { backgroundColor: markerColor }]}>
-                      <Text style={styles.markerText}>{index + 1}</Text>
-                    </View>
-                    <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
-                    {mapZoom >= 14 && (
-                      <View style={styles.markerNameLabel}>
-                        <Text style={styles.markerNameText}>{client.nom}</Text>
-                      </View>
-                    )}
-                  </View>
-                </MapboxGL.PointAnnotation>
-              );
-            });
-          }
-
-          // Calculate REAL geographic distances and sort
-          const clientsWithDistance = clients.map(client => {
-            const distance = calculateDistance(
-              userLocation[1], // lat utilisateur
-              userLocation[0], // lng utilisateur
-              client.latitude,
-              client.longitude
-            );
-            return { ...client, distance };
-          });
-          clientsWithDistance.sort((a, b) => a.distance - b.distance);
-
-          return clientsWithDistance.map((client, index) => {
-            const allChecked = isClientAllChecked(client.id);
-            const markerColor = allChecked ? '#27ae60' : '#c0392b';
-            const distanceMeters = Math.round(client.distance);
-            const distanceText = distanceMeters < 1000 
-              ? `${distanceMeters} m`
-              : `${(distanceMeters / 1000).toFixed(1)} km`;
-            
-            return (
-              <MapboxGL.PointAnnotation
-                key={client.id}
-                id={`client-${client.id}`}
-                coordinate={[client.longitude, client.latitude]}
-                onSelected={() => {
-                  setSelectedClient(client);
-                  setShowClientPopup(true);
-                }}
-              >
-                <View style={styles.markerOuter}>
-                  <View style={[styles.markerCircle, { backgroundColor: markerColor }]}>
-                    <Text style={styles.markerText}>{index + 1}</Text>
-                  </View>
-                  <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
-                  {mapZoom >= 14 && (
-                    <View style={styles.markerNameLabel}>
-                      <Text style={styles.markerNameText}>
-                        {client.nom} <Text style={styles.markerDistanceText}>· {distanceText}</Text>
-                      </Text>
-                    </View>
-                  )}
+        {enrichedClients.map((client) => {
+          const allChecked = isClientAllChecked(client.id);
+          const markerColor = allChecked ? '#27ae60' : '#c0392b';
+          
+          return (
+            <MapboxGL.PointAnnotation
+              key={client.id}
+              id={`client-${client.id}`}
+              coordinate={[client.longitude, client.latitude]}
+              onSelected={() => {
+                setSelectedClient(client);
+                setShowClientPopup(true);
+              }}
+            >
+              <View style={styles.markerOuter}>
+                <View style={[styles.markerCircle, { backgroundColor: markerColor }]}>
+                  <Text style={styles.markerText}>{client.proximityNumber}</Text>
                 </View>
-              </MapboxGL.PointAnnotation>
-            );
-          });
-        })()}
+                <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
+                {mapZoom >= 14 && client.distanceText && (
+                  <View style={styles.markerNameLabel}>
+                    <Text style={styles.markerNameText}>
+                      {client.nom} <Text style={styles.markerDistanceText}>· {client.distanceText}</Text>
+                    </Text>
+                  </View>
+                )}
+                {mapZoom >= 14 && !client.distanceText && (
+                  <View style={styles.markerNameLabel}>
+                    <Text style={styles.markerNameText}>{client.nom}</Text>
+                  </View>
+                )}
+              </View>
+            </MapboxGL.PointAnnotation>
+          );
+        })}
         {routeGeoJSON && (
           <MapboxGL.ShapeSource id="routeSource" shape={routeGeoJSON}>
             <MapboxGL.LineLayer
@@ -1166,7 +1127,7 @@ export default function MotoScreen() {
         visible={showSettingsPanel}
         onClose={() => setShowSettingsPanel(false)}
         mode="moto"
-        clients={clients}
+        clients={enrichedClients}
         onClientPress={(client) => {
           // Centrer la carte sur le client sélectionné
           if (Platform.OS === 'web' && mapRef.current) {

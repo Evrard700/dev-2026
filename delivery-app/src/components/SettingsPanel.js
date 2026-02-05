@@ -332,11 +332,18 @@ export default function SettingsPanel({ visible, onClose, mode, clients = [], on
                     >
                       <View style={styles.clientsListItemAvatar}>
                         <Text style={styles.clientsListItemAvatarText}>
-                          {client.nom.substring(0, 2).toUpperCase()}
+                          {client.proximityNumber || '?'}
                         </Text>
                       </View>
                       <View style={styles.clientsListItemInfo}>
-                        <Text style={styles.clientsListItemName}>{client.nom}</Text>
+                        <View style={styles.clientsListItemNameRow}>
+                          <Text style={styles.clientsListItemName}>{client.nom}</Text>
+                          {client.distanceText && (
+                            <Text style={styles.clientsListItemDistance}>
+                              {client.distanceText}
+                            </Text>
+                          )}
+                        </View>
                         {client.adresse ? (
                           <Text style={styles.clientsListItemAddress} numberOfLines={1}>
                             {client.adresse}
@@ -806,11 +813,26 @@ const styles = StyleSheet.create({
   clientsListItemInfo: {
     flex: 1,
   },
+  clientsListItemNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   clientsListItemName: {
     fontSize: 16,
     fontWeight: '700',
     color: '#000',
     letterSpacing: -0.2,
+    flex: 1,
+  },
+  clientsListItemDistance: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4ade80',
+    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   clientsListItemAddress: {
     fontSize: 13,

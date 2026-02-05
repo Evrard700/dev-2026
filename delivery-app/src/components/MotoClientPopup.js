@@ -342,36 +342,53 @@ export default function MotoClientPopup({
                     )}
                   </View>
 
-                  <TextInput
-                    style={styles.addInputFull}
-                    value={produit}
-                    onChangeText={setProduit}
-                    placeholder="Nom du produit"
-                    placeholderTextColor="#aeaeb2"
-                  />
-                  <View style={styles.addRow}>
-                    <View style={styles.addFieldSmall}>
-                      <Text style={styles.addFieldLabel}>Qte</Text>
+                  <View style={styles.smartRow}>
+                    {/* Nom du produit - toujours visible */}
+                    <View style={[
+                      styles.smartField,
+                      !produit.trim() ? styles.smartFieldFull : (
+                        !quantite.trim() ? styles.smartFieldHalf : styles.smartFieldThird
+                      )
+                    ]}>
                       <TextInput
-                        style={styles.addInputSmall}
-                        value={quantite}
-                        onChangeText={setQuantite}
-                        placeholder="1"
+                        style={styles.addInputSmart}
+                        value={produit}
+                        onChangeText={setProduit}
+                        placeholder="Nom du produit"
                         placeholderTextColor="#aeaeb2"
-                        keyboardType="numeric"
                       />
                     </View>
-                    <View style={styles.addFieldLarge}>
-                      <Text style={styles.addFieldLabel}>Prix (FCFA)</Text>
-                      <TextInput
-                        style={styles.addInputSmall}
-                        value={prix}
-                        onChangeText={setPrix}
-                        placeholder="0"
-                        placeholderTextColor="#aeaeb2"
-                        keyboardType="numeric"
-                      />
-                    </View>
+                    
+                    {/* Quantité - apparaît quand produit rempli */}
+                    {produit.trim() !== '' && (
+                      <View style={[
+                        styles.smartField,
+                        !quantite.trim() ? styles.smartFieldHalf : styles.smartFieldThird
+                      ]}>
+                        <TextInput
+                          style={styles.addInputSmart}
+                          value={quantite}
+                          onChangeText={setQuantite}
+                          placeholder="Qté"
+                          placeholderTextColor="#aeaeb2"
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    )}
+                    
+                    {/* Prix - apparaît quand quantité remplie */}
+                    {quantite.trim() !== '' && (
+                      <View style={[styles.smartField, styles.smartFieldThird]}>
+                        <TextInput
+                          style={styles.addInputSmart}
+                          value={prix}
+                          onChangeText={setPrix}
+                          placeholder="Prix (F)"
+                          placeholderTextColor="#aeaeb2"
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    )}
                   </View>
                   <Animated.View style={{ transform: [{ scale: addBtnScale }] }}>
                     <Pressable
@@ -753,6 +770,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e5ea',
   },
+  // Smart progressive form
+  smartRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  smartField: {
+    transition: 'all 0.3s ease',
+  },
+  smartFieldFull: {
+    flex: 1,
+  },
+  smartFieldHalf: {
+    flex: 1,
+  },
+  smartFieldThird: {
+    flex: 1,
+  },
+  addInputSmart: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#000',
+    borderWidth: 1,
+    borderColor: '#e5e5ea',
+  },
+  
+  // Old styles (keep for compatibility)
   addRow: {
     flexDirection: 'row',
     gap: 10,

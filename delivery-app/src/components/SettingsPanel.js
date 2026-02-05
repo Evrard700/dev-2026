@@ -227,6 +227,43 @@ export default function SettingsPanel({ visible, onClose, mode, clients = [], on
               )}
             </View>
 
+            {/* Partage WhatsApp */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Partager KOUZO</Text>
+              <TouchableOpacity
+                style={styles.whatsappShareBtn}
+                onPress={() => {
+                  const appUrl = 'https://delivery-app-omega-five.vercel.app';
+                  const message = encodeURIComponent(
+                    '🚀 Essaye KOUZO, l\'application de livraison pour livreurs !\n\n' +
+                    '✅ Gestion clients & commandes\n' +
+                    '✅ Navigation GPS en temps réel\n' +
+                    '✅ Hors ligne\n\n' +
+                    appUrl
+                  );
+                  const whatsappUrl = `https://wa.me/?text=${message}`;
+                  
+                  if (Platform.OS === 'web') {
+                    window.open(whatsappUrl, '_blank');
+                  } else {
+                    const Linking = require('react-native').Linking;
+                    Linking.openURL(whatsappUrl).catch(err => {
+                      console.error('Failed to open WhatsApp:', err);
+                    });
+                  }
+                }}
+              >
+                <View style={styles.whatsappIcon}>
+                  <Text style={styles.whatsappIconText}>💬</Text>
+                </View>
+                <View style={styles.whatsappShareContent}>
+                  <Text style={styles.whatsappShareTitle}>Partager sur WhatsApp</Text>
+                  <Text style={styles.whatsappShareDesc}>Inviter d'autres livreurs</Text>
+                </View>
+                <Text style={styles.whatsappShareArrow}>›</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* App info */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>A propos</Text>
@@ -603,6 +640,43 @@ const styles = StyleSheet.create({
   },
   infoLabel: { color: '#8e8e93', fontSize: 14 },
   infoValue: { color: '#000', fontSize: 14, fontWeight: '600' },
+  whatsappShareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#25D366',
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+  },
+  whatsappIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  whatsappIconText: {
+    fontSize: 22,
+  },
+  whatsappShareContent: {
+    flex: 1,
+  },
+  whatsappShareTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  whatsappShareDesc: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 2,
+  },
+  whatsappShareArrow: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#fff',
+  },
   logoutBtn: {
     backgroundColor: '#FFF2F2',
     borderRadius: 16,

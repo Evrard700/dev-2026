@@ -88,6 +88,8 @@ export default function MotoClientPopup({
   onDeleteOrder,
   onNavigate,
   onDeleteClient,
+  clientNumber,
+  clientDistance,
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [produit, setProduit] = useState('');
@@ -228,37 +230,40 @@ export default function MotoClientPopup({
       >
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View style={styles.card}>
-          {/* Header */}
-          <View style={styles.cardHeader}>
-            <View style={styles.headerLeft}>
-              <View style={styles.clientAvatar}>
-                <Text style={styles.clientAvatarText}>
-                  {client.nom.substring(0, 2).toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.headerInfo}>
-                <Text style={styles.clientName} numberOfLines={1}>{client.nom}</Text>
-                {client.numero ? (
-                  <TouchableOpacity
-                    onPress={() => {
-                      const phoneNumber = client.numero.replace(/\s+/g, '');
-                      Linking.openURL(`tel:${phoneNumber}`).catch(err => {
-                        console.warn('Failed to open phone dialer:', err);
-                        if (Platform.OS !== 'web') {
-                          Alert.alert('Erreur', 'Impossible d\'ouvrir le composeur téléphonique');
-                        }
-                      });
-                    }}
-                  >
-                    <Text style={styles.clientPhone}>📞 {client.numero}</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+          {/* Client Number + Name Banner */}
+          <View style={styles.clientBanner}>
+            <View style={styles.clientBannerNumber}>
+              <Text style={styles.clientBannerNumberText}>{clientNumber || '?'}</Text>
+            </View>
+            <View style={styles.clientBannerInfo}>
+              <Text style={styles.clientBannerName} numberOfLines={1}>{client.nom}</Text>
+              {clientDistance && (
+                <Text style={styles.clientBannerDistance}>{clientDistance}</Text>
+              )}
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeBtnX}>✕</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Header - Phone number */}
+          {client.numero && (
+            <TouchableOpacity
+              style={styles.phoneRow}
+              onPress={() => {
+                const phoneNumber = client.numero.replace(/\s+/g, '');
+                Linking.openURL(`tel:${phoneNumber}`).catch(err => {
+                  console.warn('Failed to open phone dialer:', err);
+                  if (Platform.OS !== 'web') {
+                    Alert.alert('Erreur', 'Impossible d\'ouvrir le composeur téléphonique');
+                  }
+                });
+              }}
+            >
+              <Text style={styles.phoneIcon}>📞</Text>
+              <Text style={styles.phoneText}>{client.numero}</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Address */}
           {client.adresse ? (
@@ -478,8 +483,8 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
     backgroundColor: '#fff',
     borderRadius: 24,
-    paddingTop: 20,
-    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingHorizontal: 0,
     paddingBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
@@ -488,7 +493,76 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
 
-  // Header
+  // Client Banner (Number + Name)
+  clientBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DC2626',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 12,
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  clientBannerNumber: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  clientBannerNumberText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  clientBannerInfo: {
+    flex: 1,
+  },
+  clientBannerName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  clientBannerDistance: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 2,
+  },
+
+  // Phone Row
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f2f2f7',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginTop: 14,
+    gap: 10,
+  },
+  phoneIcon: {
+    fontSize: 18,
+  },
+  phoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    flex: 1,
+  },
+
+  // Header (OLD - kept for compatibility but hidden)
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -605,6 +679,7 @@ const styles = StyleSheet.create({
 
   scrollBody: {
     flexGrow: 0,
+    paddingHorizontal: 20,
   },
 
   // Orders section

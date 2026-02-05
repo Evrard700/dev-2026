@@ -1121,6 +1121,8 @@ export default function MotoScreen() {
         onDeleteOrder={handleDeleteOrder}
         onNavigate={handleNavigateToClient}
         onDeleteClient={handleDeleteClient}
+        clientNumber={selectedClient ? enrichedClients.find(c => c.id === selectedClient.id)?.proximityNumber : null}
+        clientDistance={selectedClient ? enrichedClients.find(c => c.id === selectedClient.id)?.distanceText : null}
       />
 
       <SettingsPanel

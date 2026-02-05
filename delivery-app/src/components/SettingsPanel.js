@@ -187,31 +187,6 @@ export default function SettingsPanel({ visible, onClose, mode, clients = [], on
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Theme Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Apparence</Text>
-              <View style={styles.themeGrid}>
-                {[
-                  { key: 'system', label: 'Auto', icon: 'A' },
-                  { key: 'light', label: 'Jour', icon: 'J' },
-                  { key: 'dark', label: 'Nuit', icon: 'N' },
-                ].map((opt) => (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[styles.themeBtn, themeMode === opt.key && styles.themeBtnActive]}
-                    onPress={() => handleThemeChange(opt.key)}
-                  >
-                    <View style={[styles.themeIconCircle, themeMode === opt.key && styles.themeIconCircleActive]}>
-                      <Text style={[styles.themeIconText, themeMode === opt.key && styles.themeIconTextActive]}>{opt.icon}</Text>
-                    </View>
-                    <Text style={[styles.themeBtnText, themeMode === opt.key && styles.themeBtnTextActive]}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
             {/* Offline Maps */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Carte hors ligne</Text>
@@ -251,27 +226,6 @@ export default function SettingsPanel({ visible, onClose, mode, clients = [], on
                 </TouchableOpacity>
               )}
             </View>
-
-            {/* Clients List */}
-            {mode === 'moto' && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionTitle}>Clients</Text>
-                  <View style={styles.clientCountBadge}>
-                    <Text style={styles.clientCountText}>{clients.length}</Text>
-                  </View>
-                </View>
-                <TouchableOpacity style={styles.clientsBtn} onPress={() => setShowClientsList(true)}>
-                  <View style={styles.clientsBtnIcon}>
-                    <View style={styles.clientsIconDot} />
-                    <View style={styles.clientsIconDot} />
-                    <View style={styles.clientsIconDot} />
-                  </View>
-                  <Text style={styles.clientsBtnText}>Voir tous les clients</Text>
-                  <Text style={styles.clientsBtnArrow}>›</Text>
-                </TouchableOpacity>
-              </View>
-            )}
 
             {/* App info */}
             <View style={styles.section}>

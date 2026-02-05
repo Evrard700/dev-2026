@@ -28,7 +28,7 @@ import OrderCard from '../src/components/OrderCard';
 import FloatingButton from '../src/components/FloatingButton';
 import GlassCard from '../src/components/GlassCard';
 import GlassButton from '../src/components/GlassButton';
-import ClientFormModal from '../src/components/ClientFormModal.glass';
+import ClientFormModal from '../src/components/ClientFormModal';
 import { colors, spacing } from '../src/styles/glassmorphism';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');

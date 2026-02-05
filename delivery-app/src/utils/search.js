@@ -129,6 +129,36 @@ export function searchClients(query, clients, orders = []) {
   return results;
 }
 
+// Recherche de lieux uniquement (Mapbox seulement)
+export async function searchPlaces(query, userLocation, mapboxToken) {
+  if (!query || !query.trim()) return [];
+  
+  try {
+    const proximity = userLocation ? `&proximity=${userLocation[0]},${userLocation[1]}` : '';
+    const bbox = userLocation
+      ? `&bbox=${userLocation[0] - 0.5},${userLocation[1] - 0.5},${userLocation[0] + 0.5},${userLocation[1] + 0.5}`
+      : '';
+    
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxToken}&limit=10&language=fr${proximity}${bbox}&types=poi,address,place,locality,neighborhood&autocomplete=true&fuzzyMatch=true`;
+    
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    return (data.features || []).map(f => ({
+      type: 'place',
+      id: f.id,
+      name: f.text,
+      subtitle: f.place_name,
+      fullName: f.place_name,
+      coords: f.center,
+      category: f.properties?.category || '',
+    }));
+  } catch (e) {
+    console.warn('Mapbox search error:', e);
+    return [];
+  }
+}
+
 // Recherche hybride: clients + Mapbox
 export async function hybridSearch(query, clients, orders, userLocation, mapboxToken) {
   // 1. Recherche clients d'abord

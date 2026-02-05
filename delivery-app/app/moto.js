@@ -15,7 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { getDirectionsUrl, parseGoogleMapsUrl, MAPBOX_TOKEN } from '../src/utils/mapbox';
 import { getCurrentLocation, watchLocation } from '../src/utils/location';
-import { hybridSearch } from '../src/utils/search';
+import { searchPlaces } from '../src/utils/search';
 import {
   getMotoClients,
   addMotoClient,
@@ -677,14 +677,11 @@ export default function MotoScreen() {
     }
     searchTimerRef.current = setTimeout(async () => {
       try {
-        // Recherche hybride intelligente: clients + Mapbox
-        const results = await hybridSearch(text, clients, orders, userLocation, MAPBOX_TOKEN);
+        // Recherche de lieux uniquement (pas de clients)
+        const results = await searchPlaces(text, userLocation, MAPBOX_TOKEN);
         
-        // Combiner et afficher les résultats
-        const allResults = [...results.clients, ...results.places];
-        
-        if (allResults.length > 0) {
-          setSearchResults(allResults);
+        if (results.length > 0) {
+          setSearchResults(results);
           setShowSearchResults(true);
         } else {
           setSearchResults([]);
@@ -696,7 +693,7 @@ export default function MotoScreen() {
         setShowSearchResults(false);
       }
     }, 200); // Réduit à 200ms pour réactivité
-  }, [userLocation, clients, orders]);
+  }, [userLocation]);
 
   const handleSelectSearchResult = useCallback((result) => {
     setSearchQuery(result.name);
@@ -704,17 +701,11 @@ export default function MotoScreen() {
     setSearchResults([]);
     Keyboard.dismiss();
     
-    // Si c'est un client, ouvrir la popup du client
-    if (result.type === 'client' && result.client) {
-      setSelectedClient(result.client);
-      setShowClientPopup(true);
-    }
-    
-    // Centrer la carte sur le résultat
+    // Centrer la carte sur le lieu
     if (Platform.OS === 'web' && mapRef.current) {
       mapRef.current.setCamera({
         centerCoordinate: result.coords,
-        zoomLevel: result.type === 'client' ? 17 : 16,
+        zoomLevel: 16,
         pitch: 0,
         bearing: 0,
         animationDuration: 1200,
@@ -722,7 +713,7 @@ export default function MotoScreen() {
     } else if (cameraRef.current) {
       cameraRef.current.setCamera({
         centerCoordinate: result.coords,
-        zoomLevel: result.type === 'client' ? 17 : 16,
+        zoomLevel: 16,
         pitch: 0,
         heading: 0,
         animationDuration: 1200,
@@ -884,37 +875,19 @@ export default function MotoScreen() {
             {searchResults.map((item) => (
               <TouchableOpacity
                 key={item.id}
-                style={[
-                  styles.searchResultItem,
-                  item.type === 'client' && styles.searchResultItemClient
-                ]}
+                style={styles.searchResultItem}
                 onPress={() => handleSelectSearchResult(item)}
               >
-                <View style={[
-                  styles.searchResultIcon,
-                  item.type === 'client' && styles.searchResultIconClient
-                ]}>
-                  <Text style={styles.searchResultIconText}>
-                    {item.type === 'client' ? '👤' : '📍'}
-                  </Text>
+                <View style={styles.searchResultIcon}>
+                  <Text style={styles.searchResultIconText}>📍</Text>
                 </View>
                 <View style={styles.searchResultInfo}>
-                  <Text style={[
-                    styles.searchResultName,
-                    item.type === 'client' && styles.searchResultNameClient
-                  ]} numberOfLines={1}>
+                  <Text style={styles.searchResultName} numberOfLines={1}>
                     {item.name}
                   </Text>
-                  <Text style={styles.searchResultAddress} numberOfLines={1}>
+                  <Text style={styles.searchResultAddress} numberOfLines={2}>
                     {item.subtitle || item.fullName || ''}
                   </Text>
-                  {item.type === 'client' && item.score && (
-                    <Text style={styles.searchResultScore}>
-                      {item.score >= 80 ? '🎯 Excellente correspondance' : 
-                       item.score >= 60 ? '✓ Bonne correspondance' : 
-                       '~ Correspondance partielle'}
-                    </Text>
-                  )}
                 </View>
               </TouchableOpacity>
             ))}

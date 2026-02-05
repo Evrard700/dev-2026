@@ -129,63 +129,32 @@ export function searchClients(query, clients, orders = []) {
   return results;
 }
 
-// Recherche de lieux avec Google Places API (meilleure couverture Côte d'Ivoire)
-export async function searchPlaces(query, userLocation, googleApiKey) {
+// Recherche de lieux avec Google Places API via serverless proxy (meilleure couverture Côte d'Ivoire)
+export async function searchPlaces(query, userLocation) {
   if (!query || !query.trim()) return [];
   
   try {
-    // Construire l'URL Google Places Autocomplete
-    const location = userLocation 
-      ? `&location=${userLocation[1]},${userLocation[0]}&radius=50000` // 50km radius
-      : '';
+    // Appeler l'API serverless Vercel (pas de clé API exposée côté client)
+    const params = new URLSearchParams({
+      query: query.trim(),
+    });
     
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${googleApiKey}&language=fr${location}&components=country:ci`; // Restreint à la Côte d'Ivoire
+    if (userLocation && userLocation.length === 2) {
+      params.append('lat', userLocation[1]);
+      params.append('lng', userLocation[0]);
+    }
+    
+    const url = `/api/places-search?${params.toString()}`;
     
     const res = await fetch(url);
     const data = await res.json();
     
-    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-      console.warn('Google Places API error:', data.status, data.error_message);
+    if (!res.ok || data.error) {
+      console.warn('Places search error:', data.error || 'Unknown error');
       return [];
     }
     
-    if (!data.predictions || data.predictions.length === 0) {
-      return [];
-    }
-    
-    // Pour chaque résultat, récupérer les détails (coordonnées)
-    const detailedResults = await Promise.all(
-      data.predictions.slice(0, 10).map(async (prediction) => {
-        try {
-          const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&fields=geometry,name,formatted_address,types&key=${googleApiKey}`;
-          const detailsRes = await fetch(detailsUrl);
-          const detailsData = await detailsRes.json();
-          
-          if (detailsData.status === 'OK' && detailsData.result) {
-            const result = detailsData.result;
-            return {
-              type: 'place',
-              id: prediction.place_id,
-              name: result.name || prediction.structured_formatting?.main_text || prediction.description,
-              subtitle: result.formatted_address || prediction.description,
-              fullName: result.formatted_address || prediction.description,
-              coords: [
-                result.geometry.location.lng,
-                result.geometry.location.lat
-              ],
-              category: result.types?.[0] || '',
-            };
-          }
-          return null;
-        } catch (e) {
-          console.warn('Error fetching place details:', e);
-          return null;
-        }
-      })
-    );
-    
-    // Filtrer les résultats null
-    return detailedResults.filter(r => r !== null);
+    return data.results || [];
     
   } catch (e) {
     console.warn('Google Places search error:', e);

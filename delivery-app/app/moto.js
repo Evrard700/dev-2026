@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getDirectionsUrl, parseGoogleMapsUrl, MAPBOX_TOKEN } from '../src/utils/mapbox';
-import { GOOGLE_PLACES_API_KEY } from '../src/utils/config';
 import { getCurrentLocation, watchLocation } from '../src/utils/location';
 import { searchPlaces } from '../src/utils/search';
 import {
@@ -678,8 +677,8 @@ export default function MotoScreen() {
     }
     searchTimerRef.current = setTimeout(async () => {
       try {
-        // Recherche de lieux avec Google Places (meilleure couverture CI)
-        const results = await searchPlaces(text, userLocation, GOOGLE_PLACES_API_KEY);
+        // Recherche de lieux avec Google Places via serverless proxy
+        const results = await searchPlaces(text, userLocation);
         
         if (results.length > 0) {
           setSearchResults(results);

@@ -37,18 +37,28 @@ export function watchLocation(callback) {
           coords: {
             longitude: pos.coords.longitude,
             latitude: pos.coords.latitude,
+            heading: pos.coords.heading, // Direction GPS native (si disponible)
+            speed: pos.coords.speed,
           },
         });
       },
       null,
-      { enableHighAccuracy: true }
+      { 
+        enableHighAccuracy: true,
+        maximumAge: 0, // Pas de cache, toujours fresh
+        timeout: 5000,
+      }
     );
     return { remove: () => navigator.geolocation.clearWatch(watchId) };
   } else {
     let sub;
     const Location = require('expo-location');
     Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 3000 },
+      { 
+        accuracy: Location.Accuracy.BestForNavigation, // Meilleure précision pour navigation
+        distanceInterval: 1, // Update tous les 1 mètre (au lieu de 5)
+        timeInterval: 500, // Update toutes les 0.5 secondes (au lieu de 3s)
+      },
       callback
     ).then(s => { sub = s; });
     return { remove: () => sub?.remove() };

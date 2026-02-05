@@ -71,6 +71,7 @@ const WebMapView = forwardRef(({
           bearing: bearingVal || 0,
           pitch: pitchVal || 0,
           duration: duration,
+          easing: duration < 200 ? (t) => t : (t) => t * (2 - t), // Linéaire si rapide, ease-out sinon
         });
       }
     },

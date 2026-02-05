@@ -46,7 +46,7 @@ const MAP_STYLES = [
 ];
 
 const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
-const CAMERA_UPDATE_DELAY = 50; // Update caméra toutes les 50ms pendant navigation
+const CAMERA_UPDATE_DELAY = 0; // Update caméra immédiatement (pas de délai)
 
 // Calculate bearing between two points
 function calcBearing(from, to) {
@@ -138,16 +138,24 @@ export default function MotoScreen() {
   useEffect(() => {
     const sub = watchLocation((loc) => {
       const newLoc = [loc.coords.longitude, loc.coords.latitude];
-      if (prevLocationRef.current) {
+      
+      // Utiliser le heading GPS natif si disponible (plus précis), sinon calculer
+      if (loc.coords.heading !== null && loc.coords.heading !== undefined && loc.coords.heading >= 0) {
+        // GPS heading disponible - direction native
+        userBearingRef.current = loc.coords.heading;
+        prevLocationRef.current = newLoc;
+      } else if (prevLocationRef.current) {
+        // Pas de heading GPS - calculer à partir du mouvement
         const dist = Math.hypot(newLoc[0] - prevLocationRef.current[0], newLoc[1] - prevLocationRef.current[1]);
-        // Seuil réduit pour calcul de bearing plus réactif (0.00005 → 0.00002)
-        if (dist > 0.00002) {
+        // Seuil minimal pour calcul de bearing plus réactif
+        if (dist > 0.00001) {
           userBearingRef.current = calcBearing(prevLocationRef.current, newLoc);
           prevLocationRef.current = newLoc;
         }
       } else {
         prevLocationRef.current = newLoc;
       }
+      
       userLocationRef.current = newLoc;
       setUserLocation(newLoc);
 
@@ -157,16 +165,16 @@ export default function MotoScreen() {
         cameraUpdateTimer.current = setTimeout(() => {
           const bearing = userBearingRef.current;
           if (Platform.OS === 'web' && mapRef.current) {
-            // Web: suivi fluide avec rotation automatique
-            mapRef.current.easeTo(newLoc, 18, bearing, 65);
+            // Web: suivi fluide avec rotation automatique quasi-instantanée
+            mapRef.current.easeTo(newLoc, 18, bearing, 65, 50); // 50ms = très rapide mais fluide
           } else if (cameraRef.current) {
-            // Mobile: suivi fluide avec rotation automatique
+            // Mobile: suivi fluide avec rotation automatique quasi-instantanée
             cameraRef.current.setCamera({
               centerCoordinate: newLoc,
               zoomLevel: 18,
               pitch: 65,
               heading: bearing,
-              animationDuration: 300, // Animation plus courte pour suivi plus réactif
+              animationDuration: 50, // 50ms = très rapide mais fluide
               animationMode: 'easeTo',
             });
           }

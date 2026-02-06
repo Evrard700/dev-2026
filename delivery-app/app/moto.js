@@ -45,7 +45,7 @@ const MAP_STYLES = [
   { id: 'streets', label: 'Standard', url: 'mapbox://styles/mapbox/streets-v12' },
   { id: 'satellite', label: 'Satellite', url: 'mapbox://styles/mapbox/satellite-streets-v12' },
   { id: 'nav', label: 'Navigation', url: 'mapbox://styles/mapbox/navigation-day-v1' },
-  { id: '3d', label: '3D', url: 'mapbox://styles/mapbox/outdoors-v12' },
+  { id: '3d', label: '3D', url: 'mapbox://styles/mapbox/streets-v12' }, // streets-v12 pour afficher les bâtiments 3D avec pitch
 ];
 
 const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
@@ -875,9 +875,11 @@ export default function MotoScreen() {
       >
         <MapboxGL.Camera
           ref={cameraRef}
-          zoomLevel={13}
-          centerCoordinate={userLocation || [-3.9962, 5.3484]}
-          pitch={is3D ? 60 : 0}
+          defaultSettings={{
+            zoomLevel: 13,
+            centerCoordinate: userLocation || [-3.9962, 5.3484],
+            pitch: 0,
+          }}
           animationMode="flyTo"
           animationDuration={1000}
         />
@@ -900,30 +902,58 @@ export default function MotoScreen() {
                 setShowClientPopup(true);
               }}
             >
-              {/* Marqueur agrandi pour Android */}
+              {/* Marqueur taille optimale pour Android (64px comme bouton client) */}
               <View style={{
-                width: 48,
-                height: 48,
-                backgroundColor: markerColor,
-                borderRadius: 24,
-                borderWidth: 4,
-                borderColor: '#fff',
-                justifyContent: 'center',
                 alignItems: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.4,
-                shadowRadius: 5,
-                elevation: 8,
               }}>
-                <Text style={{
-                  color: '#fff',
-                  fontSize: 18,
-                  fontWeight: 'bold',
-                }}>{client.proximityNumber}</Text>
+                <View style={{
+                  width: 64,
+                  height: 64,
+                  backgroundColor: markerColor,
+                  borderRadius: 32,
+                  borderWidth: 4,
+                  borderColor: '#fff',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 6,
+                  elevation: 10,
+                }}>
+                  <Text style={{
+                    color: '#fff',
+                    fontSize: 22,
+                    fontWeight: 'bold',
+                  }}>{client.proximityNumber}</Text>
+                </View>
+                {/* Nom + distance toujours visibles */}
+                <View style={{
+                  marginTop: 6,
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  paddingVertical: 5,
+                  paddingHorizontal: 10,
+                  borderRadius: 12,
+                }}>
+                  <Text style={{
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: '600',
+                    textAlign: 'center',
+                  }}>{client.nom}</Text>
+                  {client.distanceText && (
+                    <Text style={{
+                      color: '#4ade80',
+                      fontSize: 12,
+                      fontWeight: '700',
+                      textAlign: 'center',
+                      marginTop: 2,
+                    }}>{client.distanceText}</Text>
+                  )}
+                </View>
               </View>
               
-              {/* Callout natif Android - texte simple uniquement */}
+              {/* Callout natif Android */}
               <MapboxGL.Callout
                 title={`${client.proximityNumber}. ${client.nom}`}
                 subtitle={client.distanceText ? `📍 ${client.distanceText}` : ''}
@@ -1013,8 +1043,20 @@ export default function MotoScreen() {
 
       {/* Settings menu modal removed - 3 lines now directly opens settings panel */}
 
-      {/* Layers button - top right (Google Maps style) */}
-      <Animated.View style={[styles.topRightBtn, { transform: [{ scale: layerBtnScale }] }]}>
+      {/* Compass button - top right (where layers was before) */}
+      {Math.abs(mapBearing) > 5 && (
+        <Animated.View style={[styles.topRightBtn, { transform: [{ scale: compassScale }] }]}>
+          <Pressable style={styles.controlBtn} onPress={handleResetNorth} {...animPress(compassScale)}>
+            <View style={[styles.compassIcon, { transform: [{ rotate: `${-mapBearing}deg` }] }]}>
+              <View style={styles.compassNorth} />
+              <View style={styles.compassSouth} />
+            </View>
+          </Pressable>
+        </Animated.View>
+      )}
+
+      {/* Layers button - lowered position */}
+      <Animated.View style={[styles.layersBtn, { transform: [{ scale: layerBtnScale }] }]}>
         <Pressable style={styles.controlBtn} onPress={() => setShowLayerPicker(!showLayerPicker)} {...animPress(layerBtnScale)}>
           <View style={styles.layersIcon}>
             <View style={[styles.layerDiamond, styles.layerDiamond1]} />
@@ -1025,17 +1067,6 @@ export default function MotoScreen() {
 
       {/* Map controls - bottom right */}
       <View style={styles.bottomControls}>
-        {/* Compass/Reset North - only show when rotated */}
-        {Math.abs(mapBearing) > 5 && (
-          <Animated.View style={{ transform: [{ scale: compassScale }] }}>
-            <Pressable style={styles.controlBtn} onPress={handleResetNorth} {...animPress(compassScale)}>
-              <View style={[styles.compassIcon, { transform: [{ rotate: `${-mapBearing}deg` }] }]}>
-                <View style={styles.compassNorth} />
-                <View style={styles.compassSouth} />
-              </View>
-            </Pressable>
-          </Animated.View>
-        )}
 
         {/* 2D/3D Toggle */}
         <Animated.View style={{ transform: [{ scale: viewToggleScale }] }}>
@@ -1478,10 +1509,15 @@ const styles = StyleSheet.create({
   posRing: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: '#34c759', position: 'absolute' },
   posDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#34c759', position: 'absolute' },
 
-  // Bottom right
+  // Top right buttons
   topRightBtn: {
     position: 'absolute',
     top: 76,
+    right: 16,
+  },
+  layersBtn: {
+    position: 'absolute',
+    top: 140, // Plus bas que la boussole
     right: 16,
   },
   bottomControls: {

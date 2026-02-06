@@ -23,9 +23,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Autocomplete request
-    const location = lat && lng ? `&location=${lat},${lng}&radius=50000` : '';
-    const autocompleteUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${apiKey}&language=fr${location}&components=country:ci`;
+    // Autocomplete request - optimisé pour précision locale Côte d'Ivoire
+    // Rayon réduit 20km pour résultats plus pertinents + locationbias circle
+    const locationParams = lat && lng 
+      ? `&locationbias=circle:20000@${lat},${lng}` 
+      : '&locationbias=circle:20000@5.3599,-4.0083'; // Centre Abidjan par défaut
+    
+    const autocompleteUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${apiKey}&language=fr${locationParams}&components=country:ci&types=establishment|geocode|address`;
 
     const autocompleteRes = await fetch(autocompleteUrl);
     const autocompleteData = await autocompleteRes.json();
@@ -43,8 +47,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ results: [] });
     }
 
-    // Fetch details for each place (limit to 10)
-    const detailsPromises = autocompleteData.predictions.slice(0, 10).map(async (prediction) => {
+    // Fetch details for each place (limit to 15 pour plus de choix)
+    const detailsPromises = autocompleteData.predictions.slice(0, 15).map(async (prediction) => {
       try {
         const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&fields=geometry,name,formatted_address,types&key=${apiKey}`;
         const detailsRes = await fetch(detailsUrl);

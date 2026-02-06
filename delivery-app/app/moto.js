@@ -972,11 +972,13 @@ export default function MotoScreen() {
               coordinate={[client.longitude, client.latitude]}
               anchor={{ x: 0.5, y: 0.5 }}
             >
-              <TouchableOpacity
+              <Pressable
                 onPress={() => {
                   setSelectedClient(client);
                   setShowClientPopup(true);
                 }}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                android_ripple={{ color: 'rgba(255,255,255,0.3)', radius: 40 }}
                 style={{
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1032,7 +1034,7 @@ export default function MotoScreen() {
                     {client.distanceText}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </Pressable>
             </MapboxGL.MarkerView>
           );
         })}
@@ -1742,23 +1744,6 @@ const styles = StyleSheet.create({
     left: 74,
     right: 16,
     zIndex: 10,
-  },
-  ordersCounter: {
-    position: 'absolute',
-    top: 76,
-    left: 74,
-    right: 74,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 14,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    zIndex: 5,
-  },
-  ordersCounterText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
   },
   searchBar: {
     flexDirection: 'row',

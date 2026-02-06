@@ -75,12 +75,15 @@ export default function MotoScreen() {
   const routeIntervalRef = useRef(null);
   const routeTargetRef = useRef(null);
   const prevLocationRef = useRef(null);
+  const lastRouteCalcLocationRef = useRef(null);
   const userBearingRef = useRef(0);
   const smoothedBearingRef = useRef(0); // Bearing lissé pour éviter tremblements
   const lastMapBearingRef = useRef(0); // Dernier bearing appliqué à la carte (pour détecter virages)
 
   const [userLocation, setUserLocation] = useState(null);
   const userLocationRef = useRef(null);
+  const [stableUserLocation, setStableUserLocation] = useState(null);
+  const stableUserLocationRef = useRef(null);
   const [clients, setClients] = useState([]);
   const [orders, setOrders] = useState([]);
   const [selectedCoord, setSelectedCoord] = useState(null);
@@ -117,7 +120,6 @@ export default function MotoScreen() {
   const viewToggleScale = useRef(new Animated.Value(1)).current;
   const zoomInScale = useRef(new Animated.Value(1)).current;
   const zoomOutScale = useRef(new Animated.Value(1)).current;
-  const compassScale = useRef(new Animated.Value(1)).current;
   const clientsBtnScale = useRef(new Animated.Value(1)).current;
   const animPress = useCallback((anim) => ({
     onPressIn: () => Animated.spring(anim, { toValue: 0.88, useNativeDriver: true, speed: 50, bounciness: 4 }).start(),
@@ -133,7 +135,9 @@ export default function MotoScreen() {
         if (mounted) {
           const loc = [location.coords.longitude, location.coords.latitude];
           userLocationRef.current = loc;
+          stableUserLocationRef.current = loc;
           setUserLocation(loc);
+          setStableUserLocation(loc);
         }
       } catch (e) {
         console.warn('Location error:', e);
@@ -191,6 +195,20 @@ export default function MotoScreen() {
       
       userLocationRef.current = newLoc;
       setUserLocation(newLoc);
+
+      // Update stableUserLocation only if moved > 50m (reduces enrichedClients recalc)
+      if (!stableUserLocationRef.current) {
+        stableUserLocationRef.current = newLoc;
+        setStableUserLocation(newLoc);
+      } else {
+        const dx = newLoc[0] - stableUserLocationRef.current[0];
+        const dy = newLoc[1] - stableUserLocationRef.current[1];
+        // ~0.00045 degrees ≈ 50m at equator
+        if (Math.hypot(dx, dy) > 0.00045) {
+          stableUserLocationRef.current = newLoc;
+          setStableUserLocation(newLoc);
+        }
+      }
 
       // Mode GPS classique: Itinéraire toujours vertical (heading up navigation)
       if (isNavigatingRef.current && routeTargetRef.current && isMoving) {
@@ -252,12 +270,20 @@ export default function MotoScreen() {
   useEffect(() => {
     if (isNavigating && routeTargetRef.current) {
       isNavigatingRef.current = true;
+      lastRouteCalcLocationRef.current = null; // Reset to force first calc
 
       if (routeIntervalRef.current) clearInterval(routeIntervalRef.current);
 
       routeIntervalRef.current = setInterval(async () => {
         const loc = userLocationRef.current;
         if (!routeTargetRef.current || !loc) return;
+        // Skip recalc if user hasn't moved >50m since last route calculation
+        if (lastRouteCalcLocationRef.current) {
+          const dx = loc[0] - lastRouteCalcLocationRef.current[0];
+          const dy = loc[1] - lastRouteCalcLocationRef.current[1];
+          if (Math.hypot(dx, dy) < 0.00045) return; // ~50m
+        }
+        lastRouteCalcLocationRef.current = loc;
         try {
           const target = routeTargetRef.current;
           const url = getDirectionsUrl(loc, [target.longitude, target.latitude]);
@@ -312,6 +338,13 @@ export default function MotoScreen() {
     return () => {
       if (routeIntervalRef.current) clearInterval(routeIntervalRef.current);
     };
+  }, []);
+
+  // Close search results and layer picker when user touches the map
+  const handleMapInteraction = useCallback(() => {
+    setShowSearchResults(false);
+    setShowLayerPicker(false);
+    Keyboard.dismiss();
   }, []);
 
   const handleMapLongPress = useCallback((event) => {
@@ -594,9 +627,19 @@ export default function MotoScreen() {
     }
   }, [userLocation]);
 
-  const isClientAllChecked = useCallback((clientId) => {
-    const clientOrders = orders.filter(o => o.clientId === clientId);
-    return clientOrders.length > 0 && clientOrders.every(o => o.checked);
+  // Pre-calculate checked status for all clients in one pass
+  const allCheckedMap = useMemo(() => {
+    const map = {};
+    const countMap = {};
+    const checkedCountMap = {};
+    orders.forEach(o => {
+      countMap[o.clientId] = (countMap[o.clientId] || 0) + 1;
+      if (o.checked) checkedCountMap[o.clientId] = (checkedCountMap[o.clientId] || 0) + 1;
+    });
+    Object.keys(countMap).forEach(clientId => {
+      map[clientId] = countMap[clientId] > 0 && countMap[clientId] === (checkedCountMap[clientId] || 0);
+    });
+    return map;
   }, [orders]);
 
   const handleMarkerPress = useCallback((clientId) => {
@@ -644,19 +687,6 @@ export default function MotoScreen() {
     }
   }, [mapZoom]);
 
-  // Reset compass/north
-  const handleResetNorth = useCallback(() => {
-    if (Platform.OS === 'web' && mapRef.current?.resetNorth) {
-      mapRef.current.resetNorth(500);
-    } else if (cameraRef.current) {
-      cameraRef.current.setCamera({
-        heading: 0,
-        animationDuration: 500,
-      });
-    }
-    setMapBearing(0);
-  }, []);
-
   // Map event handlers
   const handleBearingChange = useCallback((bearing) => {
     setMapBearing(bearing);
@@ -669,6 +699,50 @@ export default function MotoScreen() {
   const handleZoomChange = useCallback((zoom) => {
     setMapZoom(zoom);
   }, []);
+
+  // Fit map to show all client markers (+ user location)
+  const fitAllClients = useCallback(() => {
+    if (clients.length === 0) return;
+    const coords = clients.map(c => [c.longitude, c.latitude]);
+    if (userLocation) coords.push(userLocation);
+    if (Platform.OS === 'web' && mapRef.current?.fitBounds) {
+      mapRef.current.fitBounds(coords, 60);
+    } else if (cameraRef.current) {
+      // Native: compute bounding box
+      let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+      coords.forEach(([lng, lat]) => {
+        if (lng < minLng) minLng = lng;
+        if (lng > maxLng) maxLng = lng;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+      });
+      const ne = [maxLng, maxLat];
+      const sw = [minLng, minLat];
+      const centerCoord = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+      // Estimate zoom from bounds span
+      const span = Math.max(maxLng - minLng, maxLat - minLat);
+      const zoom = span > 0 ? Math.max(2, Math.min(16, Math.log2(360 / span) - 1)) : 14;
+      cameraRef.current.setCamera({
+        centerCoordinate: centerCoord,
+        zoomLevel: zoom,
+        pitch: 0,
+        heading: 0,
+        animationDuration: 1000,
+      });
+    }
+  }, [clients, userLocation]);
+
+  // Auto-fit clients at startup (once data is loaded)
+  const hasFittedRef = useRef(false);
+  useEffect(() => {
+    if (!loading && clients.length > 0 && userLocation && !hasFittedRef.current) {
+      hasFittedRef.current = true;
+      // Longer delay to ensure map style is fully loaded
+      setTimeout(() => {
+        try { fitAllClients(); } catch (e) { /* ignore */ }
+      }, 1500);
+    }
+  }, [loading, clients.length, userLocation, fitAllClients]);
 
   const centerOnUser = useCallback(() => {
     if (!userLocation) return;
@@ -769,8 +843,9 @@ export default function MotoScreen() {
   }, []);
 
   // Calculer clients enrichis avec numéros et distances (pour markers ET liste)
+  // Uses stableUserLocation (updates only when moved >50m) to avoid recalc on every GPS tick
   const enrichedClients = useMemo(() => {
-    if (!userLocation) {
+    if (!stableUserLocation) {
       // Si pas de position utilisateur, juste afficher dans l'ordre d'ajout
       return clients.map((client, index) => ({
         ...client,
@@ -783,8 +858,8 @@ export default function MotoScreen() {
     // Calculer la VRAIE distance géographique de chaque client
     const clientsWithDistance = clients.map(client => {
       const distance = calculateDistance(
-        userLocation[1], // lat utilisateur
-        userLocation[0], // lng utilisateur
+        stableUserLocation[1], // lat utilisateur
+        stableUserLocation[0], // lng utilisateur
         client.latitude,
         client.longitude
       );
@@ -808,11 +883,11 @@ export default function MotoScreen() {
         distanceText: distanceText, // "350 m" ou "1.2 km"
       };
     });
-  }, [clients, userLocation, calculateDistance]);
+  }, [clients, stableUserLocation, calculateDistance]);
 
   const webMarkers = useMemo(() => {
     return enrichedClients.map(client => {
-      const allChecked = isClientAllChecked(client.id);
+      const allChecked = !!allCheckedMap[client.id];
       return {
         id: client.id,
         longitude: client.longitude,
@@ -825,7 +900,7 @@ export default function MotoScreen() {
         distanceText: client.distanceText,
       };
     });
-  }, [enrichedClients, orders, isClientAllChecked, mapZoom]);
+  }, [enrichedClients, orders, allCheckedMap, mapZoom]);
 
   if (loading) {
     return (
@@ -849,6 +924,7 @@ export default function MotoScreen() {
           mapStyle={mapStyle}
           onLongPress={handleMapLongPress}
           onMarkerPress={handleMarkerPress}
+          onMapInteraction={handleMapInteraction}
           onBearingChange={handleBearingChange}
           onPitchChange={handlePitchChange}
           onZoomChange={handleZoomChange}
@@ -866,11 +942,12 @@ export default function MotoScreen() {
         style={styles.map}
         styleURL={mapStyle}
         onLongPress={handleMapLongPress}
+        onPress={handleMapInteraction}
         pitchEnabled={true} // Toujours actif pour manipulation libre
         rotateEnabled={true} // Toujours actif pour rotation 360°
         scrollEnabled={true} // Toujours actif pour pan
         zoomEnabled={true} // Toujours actif pour zoom/dezoom
-        compassEnabled={true}
+        compassEnabled={false}
         scaleBarEnabled={false}
       >
         <MapboxGL.Camera
@@ -889,7 +966,7 @@ export default function MotoScreen() {
           pulsing={{ isEnabled: true, color: '#4285F4', radius: 50 }}
         />
         {enrichedClients.map((client) => {
-          const allChecked = isClientAllChecked(client.id);
+          const allChecked = !!allCheckedMap[client.id];
           const markerColor = allChecked ? '#27ae60' : '#c0392b';
           
           return (
@@ -1043,45 +1120,40 @@ export default function MotoScreen() {
         )}
       </View>
 
-      {/* Settings menu modal removed - 3 lines now directly opens settings panel */}
-
-      {/* Compass button - top right (where layers was before) */}
-      {Math.abs(mapBearing) > 5 && (
-        <Animated.View style={[styles.topRightBtn, { transform: [{ scale: compassScale }] }]}>
-          <Pressable style={styles.controlBtn} onPress={handleResetNorth} {...animPress(compassScale)}>
-            <View style={[styles.compassIcon, { transform: [{ rotate: `${-mapBearing}deg` }] }]}>
-              <View style={styles.compassNorth} />
-              <View style={styles.compassSouth} />
-            </View>
-          </Pressable>
-        </Animated.View>
+      {/* Orders counter */}
+      {orders.length > 0 && (
+        <View style={styles.ordersCounter}>
+          <Text style={styles.ordersCounterText}>
+            {orders.length} commande{orders.length > 1 ? 's' : ''} {'\u00B7'} {orders.filter(o => o.checked).length} livr\u00e9e{orders.filter(o => o.checked).length > 1 ? 's' : ''}
+          </Text>
+        </View>
       )}
-
-      {/* Layers button - lowered position */}
-      <Animated.View style={[styles.layersBtn, { transform: [{ scale: layerBtnScale }] }]}>
-        <Pressable style={styles.controlBtn} onPress={() => setShowLayerPicker(!showLayerPicker)} {...animPress(layerBtnScale)}>
-          <View style={styles.layersIcon}>
-            <View style={[styles.layerDiamond, styles.layerDiamond1]} />
-            <View style={[styles.layerDiamond, styles.layerDiamond2]} />
-          </View>
-        </Pressable>
-      </Animated.View>
 
       {/* Map controls - bottom right */}
       <View style={styles.bottomControls}>
 
-        {/* 2D/3D Toggle */}
-        <Animated.View style={{ transform: [{ scale: viewToggleScale }] }}>
-          <Pressable
-            style={[styles.controlBtn, is3D && styles.controlBtnActive]}
-            onPress={toggle3DView}
-            {...animPress(viewToggleScale)}
-          >
-            <Text style={[styles.viewToggleText, is3D && styles.viewToggleTextActive]}>
-              {is3D ? '3D' : '2D'}
-            </Text>
-          </Pressable>
-        </Animated.View>
+        {/* Layers + 2D/3D Toggle row */}
+        <View style={styles.topControlsRow}>
+          <Animated.View style={{ transform: [{ scale: layerBtnScale }] }}>
+            <Pressable style={styles.controlBtn} onPress={() => setShowLayerPicker(!showLayerPicker)} {...animPress(layerBtnScale)}>
+              <View style={styles.layersIcon}>
+                <View style={[styles.layerDiamond, styles.layerDiamond1]} />
+                <View style={[styles.layerDiamond, styles.layerDiamond2]} />
+              </View>
+            </Pressable>
+          </Animated.View>
+          <Animated.View style={{ transform: [{ scale: viewToggleScale }] }}>
+            <Pressable
+              style={[styles.controlBtn, is3D && styles.controlBtnActive]}
+              onPress={toggle3DView}
+              {...animPress(viewToggleScale)}
+            >
+              <Text style={[styles.viewToggleText, is3D && styles.viewToggleTextActive]}>
+                {is3D ? '3D' : '2D'}
+              </Text>
+            </Pressable>
+          </Animated.View>
+        </View>
 
         {/* Zoom controls */}
         <View style={styles.zoomControls}>
@@ -1098,9 +1170,9 @@ export default function MotoScreen() {
           </Animated.View>
         </View>
 
-        {/* Position/Center button */}
+        {/* Position/Center button - long press = fit all clients */}
         <Animated.View style={{ transform: [{ scale: posBtnScale }] }}>
-          <Pressable style={styles.controlBtn} onPress={centerOnUser} {...animPress(posBtnScale)}>
+          <Pressable style={styles.controlBtn} onPress={centerOnUser} onLongPress={fitAllClients} {...animPress(posBtnScale)}>
             <View style={styles.crosshairIcon}>
               <View style={styles.crosshairRing} />
               <View style={styles.crosshairDot} />
@@ -1113,21 +1185,24 @@ export default function MotoScreen() {
         </Animated.View>
       </View>
 
-      {/* Layer picker popup */}
+      {/* Layer picker backdrop + popup */}
       {showLayerPicker && (
-        <View style={styles.layerPickerContainer}>
-          {MAP_STYLES.map((s) => (
-            <TouchableOpacity
-              key={s.id}
-              style={[styles.layerPickerBtn, mapStyle === s.url && styles.layerPickerBtnActive]}
-              onPress={() => { selectMapStyle(s.url, s.id === '3d'); setShowLayerPicker(false); }}
-            >
-              <Text style={[styles.layerPickerBtnText, mapStyle === s.url && styles.layerPickerBtnTextActive]}>
-                {s.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <>
+          <Pressable style={styles.layerPickerBackdrop} onPress={() => setShowLayerPicker(false)} />
+          <View style={styles.layerPickerContainer}>
+            {MAP_STYLES.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.layerPickerBtn, mapStyle === s.url && styles.layerPickerBtnActive]}
+                onPress={() => { selectMapStyle(s.url, s.id === '3d'); setShowLayerPicker(false); }}
+              >
+                <Text style={[styles.layerPickerBtnText, mapStyle === s.url && styles.layerPickerBtnTextActive]}>
+                  {s.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
       )}
 
       {routeInfo && (
@@ -1136,8 +1211,8 @@ export default function MotoScreen() {
           <View style={styles.routeInfoContent}>
             <Text style={styles.routeDestination}>{routeInfo.clientName}</Text>
             <Text style={styles.routeDetails}>
-              {routeInfo.duration} min  Â·  {routeInfo.distance} km
-              {isNavigating ? '  Â·  En cours' : ''}
+              {routeInfo.duration} min {'\u00B7'} {routeInfo.distance} km
+              {isNavigating ? ` \u00B7 En cours` : ''}
             </Text>
           </View>
           <TouchableOpacity style={styles.routeCloseBtn} onPress={clearRoute}>
@@ -1511,16 +1586,10 @@ const styles = StyleSheet.create({
   posRing: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: '#34c759', position: 'absolute' },
   posDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#34c759', position: 'absolute' },
 
-  // Top right buttons
-  topRightBtn: {
-    position: 'absolute',
-    top: 76,
-    right: 16,
-  },
-  layersBtn: {
-    position: 'absolute',
-    top: 140, // Plus bas que la boussole
-    right: 16,
+  // Top controls row (layers + 3D/2D)
+  topControlsRow: {
+    flexDirection: 'row',
+    gap: 10,
   },
   bottomControls: {
     position: 'absolute',
@@ -1583,38 +1652,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
 
-  // Compass icon
-  compassIcon: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  compassNorth: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderBottomWidth: 12,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#FF3B30',
-    position: 'absolute',
-    top: 0,
-  },
-  compassSouth: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 12,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#8e8e93',
-    position: 'absolute',
-    bottom: 0,
-  },
-
   layersIcon: {
     width: 24,
     height: 24,
@@ -1670,10 +1707,19 @@ const styles = StyleSheet.create({
   crosshairLeft: { width: 5, height: 2, left: 0 },
   crosshairRight: { width: 5, height: 2, right: 0 },
 
-  // Layer picker popup
-  layerPickerContainer: {
+  // Layer picker
+  layerPickerBackdrop: {
     position: 'absolute',
-    top: 132,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9,
+  },
+  layerPickerContainer: {
+    zIndex: 10,
+    position: 'absolute',
+    bottom: 240,
     right: 16,
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 18,
@@ -1795,6 +1841,23 @@ const styles = StyleSheet.create({
     left: 74,
     right: 16,
     zIndex: 10,
+  },
+  ordersCounter: {
+    position: 'absolute',
+    top: 76,
+    left: 74,
+    right: 74,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  ordersCounterText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   searchBar: {
     flexDirection: 'row',

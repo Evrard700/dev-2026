@@ -32,6 +32,7 @@ const WebMapView = forwardRef(({
   userLocation = null,
   onLongPress,
   onMarkerPress,
+  onMapInteraction,
   onBearingChange,
   onPitchChange,
   onZoomChange,
@@ -45,6 +46,7 @@ const WebMapView = forwardRef(({
   const longPressTimer = useRef(null);
   const onLongPressRef = useRef(onLongPress);
   const onMarkerPressRef = useRef(onMarkerPress);
+  const onMapInteractionRef = useRef(onMapInteraction);
   const onBearingChangeRef = useRef(onBearingChange);
   const onPitchChangeRef = useRef(onPitchChange);
   const onZoomChangeRef = useRef(onZoomChange);
@@ -118,6 +120,22 @@ const WebMapView = forwardRef(({
     getBearing: () => mapInstance.current?.getBearing() || 0,
     getPitch: () => mapInstance.current?.getPitch() || 0,
     getZoom: () => mapInstance.current?.getZoom() || zoom,
+    // Fit bounds to show all given coordinates
+    fitBounds: (coords, padding = 60) => {
+      if (mapInstance.current && coords.length > 0) {
+        const doFit = () => {
+          try {
+            const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+            mapInstance.current.fitBounds(bounds, { padding, duration: 1000 });
+          } catch (e) { /* ignore if style not ready */ }
+        };
+        if (mapInstance.current.isStyleLoaded()) {
+          doFit();
+        } else {
+          mapInstance.current.once('style.load', doFit);
+        }
+      }
+    },
     // Toggle 3D view with smooth animation
     toggle3D: (enable, duration = 800) => {
       if (mapInstance.current) {
@@ -138,6 +156,10 @@ const WebMapView = forwardRef(({
   useEffect(() => {
     onMarkerPressRef.current = onMarkerPress;
   }, [onMarkerPress]);
+
+  useEffect(() => {
+    onMapInteractionRef.current = onMapInteraction;
+  }, [onMapInteraction]);
 
   useEffect(() => {
     onBearingChangeRef.current = onBearingChange;
@@ -312,6 +334,14 @@ const WebMapView = forwardRef(({
 
     map.on('touchmove', () => {
       if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    });
+
+    // Notify parent on map interaction (click/drag) to dismiss overlays
+    map.on('click', () => {
+      if (onMapInteractionRef.current) onMapInteractionRef.current();
+    });
+    map.on('dragstart', () => {
+      if (onMapInteractionRef.current) onMapInteractionRef.current();
     });
 
     mapInstance.current = map;

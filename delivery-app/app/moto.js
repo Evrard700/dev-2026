@@ -905,6 +905,12 @@ export default function MotoScreen() {
                   setShowClientPopup(true);
                 }}
                 style={{
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {/* Cercle avec numéro */}
+                <View style={{
                   width: 64,
                   height: 64,
                   backgroundColor: markerColor,
@@ -918,13 +924,41 @@ export default function MotoScreen() {
                   shadowOpacity: 0.3,
                   shadowRadius: 4,
                   elevation: 5,
-                }}
-              >
-                <Text style={{
-                  color: '#fff',
-                  fontSize: 24,
-                  fontWeight: 'bold',
-                }}>{client.proximityNumber}</Text>
+                }}>
+                  <Text style={{
+                    color: '#fff',
+                    fontSize: 24,
+                    fontWeight: 'bold',
+                  }}>{client.proximityNumber}</Text>
+                </View>
+                
+                {/* Label nom + distance en dessous */}
+                <View style={{
+                  marginTop: 4,
+                  backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  maxWidth: 150,
+                }}>
+                  <Text style={{
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                  }} numberOfLines={1}>
+                    {client.nom}
+                  </Text>
+                  <Text style={{
+                    color: '#4ade80',
+                    fontSize: 11,
+                    fontWeight: '600',
+                    textAlign: 'center',
+                    marginTop: 2,
+                  }}>
+                    {client.distanceText}
+                  </Text>
+                </View>
               </TouchableOpacity>
             </MapboxGL.MarkerView>
           );

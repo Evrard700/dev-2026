@@ -900,24 +900,34 @@ export default function MotoScreen() {
                 setShowClientPopup(true);
               }}
             >
-              <View style={styles.markerOuter}>
-                <View style={[styles.markerCircle, { backgroundColor: markerColor }]}>
-                  <Text style={styles.markerText}>{client.proximityNumber}</Text>
-                </View>
-                <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
-                {mapZoom >= 14 && client.distanceText && (
-                  <View style={styles.markerNameLabel}>
-                    <Text style={styles.markerNameText}>
-                      {client.nom} <Text style={styles.markerDistanceText}>· {client.distanceText}</Text>
-                    </Text>
-                  </View>
-                )}
-                {mapZoom >= 14 && !client.distanceText && (
-                  <View style={styles.markerNameLabel}>
-                    <Text style={styles.markerNameText}>{client.nom}</Text>
-                  </View>
-                )}
+              {/* Marqueur agrandi pour Android */}
+              <View style={{
+                width: 48,
+                height: 48,
+                backgroundColor: markerColor,
+                borderRadius: 24,
+                borderWidth: 4,
+                borderColor: '#fff',
+                justifyContent: 'center',
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.4,
+                shadowRadius: 5,
+                elevation: 8,
+              }}>
+                <Text style={{
+                  color: '#fff',
+                  fontSize: 18,
+                  fontWeight: 'bold',
+                }}>{client.proximityNumber}</Text>
               </View>
+              
+              {/* Callout natif Android - texte simple uniquement */}
+              <MapboxGL.Callout
+                title={`${client.proximityNumber}. ${client.nom}`}
+                subtitle={client.distanceText ? `📍 ${client.distanceText}` : ''}
+              />
             </MapboxGL.PointAnnotation>
           );
         })}

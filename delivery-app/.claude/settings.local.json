@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -Command \"Set-Location ''C:\\\\dev-build\\\\delivery-app''; npm install 2>&1 | Select-Object -Last 20\")",
+      "Bash(powershell.exe:*)"
+    ]
+  }
+}

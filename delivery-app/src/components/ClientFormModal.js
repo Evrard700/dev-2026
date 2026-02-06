@@ -270,14 +270,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#4361ee15',
+    backgroundColor: '#DC262620',
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#4361ee',
+    color: '#DC2626',
   },
   title: {
     fontSize: 18,
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: '#4361ee',
+    backgroundColor: '#DC2626',
     alignItems: 'center',
   },
   disabledBtn: {

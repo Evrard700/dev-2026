@@ -48,9 +48,9 @@ const MAP_STYLES = [
   { id: '3d', label: '3D', url: 'mapbox://styles/mapbox/streets-v12' }, // streets-v12 pour afficher les bâtiments 3D avec pitch
 ];
 
-const ROUTE_UPDATE_INTERVAL = 5000; // Réduit de 8s à 5s pour suivre plus en temps réel
-const CAMERA_UPDATE_DELAY = 100; // Délai très court pour rotation instantanée
-const BEARING_SMOOTHING = 0.40; // Lissage faible pour rotation très réactive
+const ROUTE_UPDATE_INTERVAL = 5000; // 5s entre recalculs de route
+const CAMERA_UPDATE_DELAY = 50; // Délai ultra-court pour rotation instantanée
+const BEARING_SMOOTHING = 0.30; // Lissage faible = virages très réactifs
 const MIN_SPEED_FOR_ROTATION = 0.3; // Vitesse minimale (m/s) pour faire tourner la carte (~1 km/h)
 const MIN_DISTANCE_FOR_BEARING = 0.00003; // Distance minimale réduite pour calcul bearing fréquent
 const NAVIGATION_ZOOM = 18; // Zoom fixe pendant navigation
@@ -772,60 +772,6 @@ export default function MotoScreen() {
     setMapPitch(0);
   }, [userLocation, isNavigating, clearRoute]);
 
-  const handleSearch = useCallback((text) => {
-    setSearchQuery(text);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (!text.trim()) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        // Recherche de lieux avec Google Places via serverless proxy
-        const results = await searchPlaces(text, userLocation);
-        
-        if (results.length > 0) {
-          setSearchResults(results);
-          setShowSearchResults(true);
-        } else {
-          setSearchResults([]);
-          setShowSearchResults(false);
-        }
-      } catch (e) {
-        console.warn('Search error:', e);
-        setSearchResults([]);
-        setShowSearchResults(false);
-      }
-    }, 300); // Augmenté à 300ms pour réduire le nombre de requêtes API
-  }, [userLocation]);
-
-  const handleSelectSearchResult = useCallback((result) => {
-    setSearchQuery(result.name);
-    setShowSearchResults(false);
-    setSearchResults([]);
-    Keyboard.dismiss();
-    
-    // Centrer la carte sur le lieu
-    if (Platform.OS === 'web' && mapRef.current) {
-      mapRef.current.setCamera({
-        centerCoordinate: result.coords,
-        zoomLevel: 16,
-        pitch: 0,
-        bearing: 0,
-        animationDuration: 1200,
-      });
-    } else if (cameraRef.current) {
-      cameraRef.current.setCamera({
-        centerCoordinate: result.coords,
-        zoomLevel: 16,
-        pitch: 0,
-        heading: 0,
-        animationDuration: 1200,
-      });
-    }
-  }, []);
-
   // Fonction pour calculer la distance réelle en mètres (formule Haversine)
   const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
     const R = 6371e3; // Rayon de la Terre en mètres
@@ -884,6 +830,56 @@ export default function MotoScreen() {
       };
     });
   }, [clients, stableUserLocation, calculateDistance]);
+
+  const handleSearch = useCallback((text) => {
+    setSearchQuery(text);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!text.trim()) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+    // Recherche lieux uniquement (Mapbox POI)
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await searchPlaces(text, userLocation);
+        if (results.length > 0) {
+          setSearchResults(results);
+          setShowSearchResults(true);
+        } else {
+          setSearchResults([]);
+          setShowSearchResults(false);
+        }
+      } catch (e) {
+        setSearchResults([]);
+        setShowSearchResults(false);
+      }
+    }, 300);
+  }, [userLocation]);
+
+  const handleSelectSearchResult = useCallback((result) => {
+    setSearchQuery(result.name);
+    setShowSearchResults(false);
+    setSearchResults([]);
+    Keyboard.dismiss();
+    if (Platform.OS === 'web' && mapRef.current) {
+      mapRef.current.setCamera({
+        centerCoordinate: result.coords,
+        zoomLevel: 16,
+        pitch: 0,
+        bearing: 0,
+        animationDuration: 1200,
+      });
+    } else if (cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: result.coords,
+        zoomLevel: 16,
+        pitch: 0,
+        heading: 0,
+        animationDuration: 1200,
+      });
+    }
+  }, []);
 
   const webMarkers = useMemo(() => {
     return enrichedClients.map(client => {
@@ -1119,15 +1115,6 @@ export default function MotoScreen() {
           </View>
         )}
       </View>
-
-      {/* Orders counter */}
-      {orders.length > 0 && (
-        <View style={styles.ordersCounter}>
-          <Text style={styles.ordersCounterText}>
-            {orders.length} commande{orders.length > 1 ? 's' : ''} {'\u00B7'} {orders.filter(o => o.checked).length} livr\u00e9e{orders.filter(o => o.checked).length > 1 ? 's' : ''}
-          </Text>
-        </View>
-      )}
 
       {/* Map controls - bottom right */}
       <View style={styles.bottomControls}>
@@ -1499,93 +1486,6 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 
-  // Menu overlay
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-  },
-  menuPanel: {
-    marginTop: 110,
-    marginLeft: 16,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 22,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    width: 280,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  menuTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#DC2626',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: '#e5e5ea',
-    marginVertical: 10,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 12,
-  },
-  menuItemIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuItemIconText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#DC2626',
-  },
-  menuItemContent: {
-    flex: 1,
-  },
-  menuItemText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
-  },
-  menuItemDesc: {
-    fontSize: 12,
-    color: '#8e8e93',
-    marginTop: 1,
-  },
-  menuItemLogout: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: '#FFF2F2',
-    borderRadius: 14,
-  },
-  menuItemLogoutText: {
-    color: '#FF3B30',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  // Gear icon
-  gearIcon: { width: 18, height: 18, justifyContent: 'center', alignItems: 'center' },
-  gearCircle: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: '#DC2626', position: 'absolute' },
-  gearTooth: { width: 4, height: 4, borderRadius: 1, backgroundColor: '#DC2626', position: 'absolute' },
-
-  // Position icon
-  posIcon: { width: 18, height: 18, justifyContent: 'center', alignItems: 'center' },
-  posRing: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: '#34c759', position: 'absolute' },
-  posDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#34c759', position: 'absolute' },
-
   // Top controls row (layers + 3D/2D)
   topControlsRow: {
     flexDirection: 'row',
@@ -1596,6 +1496,7 @@ const styles = StyleSheet.create({
     bottom: 30,
     right: 16,
     gap: 10,
+    alignItems: 'flex-end',
   },
   controlBtn: {
     width: 48,
@@ -1945,6 +1846,15 @@ const styles = StyleSheet.create({
   searchResultNameClient: {
     color: '#DC2626',
     fontWeight: '700',
+  },
+  searchResultDistBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4ade80',
+    backgroundColor: 'rgba(74,222,128,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   searchResultScore: {
     fontSize: 10,

@@ -255,6 +255,11 @@ const WebMapView = forwardRef(({
       }
     });
 
+    // Disable fog to prevent opacity crash
+    map.on('style.load', () => {
+      try { map.setFog(null); } catch (e) { /* ignore */ }
+    });
+
     // Add 3D buildings layer when style loads
     map.on('style.load', () => {
       try {
@@ -344,6 +349,12 @@ const WebMapView = forwardRef(({
       if (onMapInteractionRef.current) onMapInteractionRef.current();
     });
 
+    // Suppress non-critical mapbox-gl internal errors (fog, opacity)
+    map.on('error', (e) => {
+      if (e?.error?.message?.includes('opacity') || e?.error?.message?.includes('fog')) return;
+      console.warn('Map error:', e?.error?.message);
+    });
+
     mapInstance.current = map;
 
     return () => {
@@ -369,6 +380,7 @@ const WebMapView = forwardRef(({
     }
 
     const onStyleLoad = () => {
+      try { map.setFog(null); } catch (e) { /* ignore */ }
       try {
         map.setPitch(pitch);
       } catch (e) { /* ignore */ }

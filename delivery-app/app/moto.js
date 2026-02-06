@@ -902,23 +902,52 @@ export default function MotoScreen() {
                 setShowClientPopup(true);
               }}
             >
-              {/* Marker ULTRA-SIMPLE pour Android - UN SEUL View */}
-              <View style={{
-                width: 64,
-                height: 64,
-                backgroundColor: markerColor,
-                borderRadius: 32,
-                borderWidth: 4,
-                borderColor: '#fff',
-                justifyContent: 'center',
-                alignItems: 'center',
-                elevation: 10,
-              }}>
-                <Text style={{
-                  color: '#fff',
-                  fontSize: 22,
-                  fontWeight: 'bold',
-                }}>{client.proximityNumber}</Text>
+              {/* Marker avec nom + distance TOUJOURS visibles */}
+              <View style={{ alignItems: 'center' }}>
+                {/* Cercle avec numéro */}
+                <View style={{
+                  width: 64,
+                  height: 64,
+                  backgroundColor: markerColor,
+                  borderRadius: 32,
+                  borderWidth: 4,
+                  borderColor: '#fff',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  elevation: 10,
+                }}>
+                  <Text style={{
+                    color: '#fff',
+                    fontSize: 22,
+                    fontWeight: 'bold',
+                  }}>{client.proximityNumber}</Text>
+                </View>
+                
+                {/* Nom + distance en-dessous */}
+                {mapZoom >= 13 && (
+                  <View style={{
+                    marginTop: 4,
+                    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                    paddingVertical: 3,
+                    paddingHorizontal: 8,
+                    borderRadius: 8,
+                    minWidth: 80,
+                  }}>
+                    <Text style={{
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: '600',
+                      textAlign: 'center',
+                    }} numberOfLines={1}>{client.nom}</Text>
+                    <Text style={{
+                      color: '#4ade80',
+                      fontSize: 10,
+                      fontWeight: '700',
+                      textAlign: 'center',
+                      marginTop: 1,
+                    }}>{client.distanceText}</Text>
+                  </View>
+                )}
               </View>
               
               {/* Callout natif avec TOUTES les infos */}

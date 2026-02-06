@@ -300,28 +300,17 @@ export default function MotoClientPopup({
                 <TouchableOpacity
                   style={[
                     styles.addToggleBtn, 
-                    showAddForm && styles.addToggleBtnActive,
-                    client.id.startsWith('temp_') && styles.addToggleBtnDisabled
+                    showAddForm && styles.addToggleBtnActive
                   ]}
                   onPress={() => {
-                    if (client.id.startsWith('temp_')) {
-                      if (Platform.OS === 'web') {
-                        alert('Synchronisation en cours... Veuillez patienter quelques secondes.');
-                      } else {
-                        Alert.alert('Synchronisation', 'Synchronisation en cours... Veuillez patienter quelques secondes.');
-                      }
-                      return;
-                    }
                     setShowAddForm(!showAddForm);
                   }}
-                  disabled={client.id.startsWith('temp_')}
                 >
                   <Text style={[
                     styles.addToggleText, 
-                    showAddForm && styles.addToggleTextActive,
-                    client.id.startsWith('temp_') && styles.addToggleTextDisabled
+                    showAddForm && styles.addToggleTextActive
                   ]}>
-                    {client.id.startsWith('temp_') ? '⏳ Synchronisation...' : (showAddForm ? 'Fermer' : '+ Ajouter')}
+                    {showAddForm ? 'Fermer' : '+ Ajouter'}
                   </Text>
                 </TouchableOpacity>
               </View>

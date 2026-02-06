@@ -130,11 +130,12 @@ export function searchClients(query, clients, orders = []) {
 }
 
 // Recherche de lieux avec Google Places API via serverless proxy (meilleure couverture Côte d'Ivoire)
+// FALLBACK vers Mapbox si Google Places n'est pas activé
 export async function searchPlaces(query, userLocation) {
   if (!query || !query.trim()) return [];
   
+  // Essayer Google Places d'abord (si API activée)
   try {
-    // Appeler l'API serverless Vercel (pas de clé API exposée côté client)
     const params = new URLSearchParams({
       query: query.trim(),
     });
@@ -149,15 +150,43 @@ export async function searchPlaces(query, userLocation) {
     const res = await fetch(url);
     const data = await res.json();
     
-    if (!res.ok || data.error) {
-      console.warn('Places search error:', data.error || 'Unknown error');
-      return [];
+    if (res.ok && !data.error && data.results && data.results.length > 0) {
+      return data.results;
     }
     
-    return data.results || [];
-    
+    console.warn('Google Places not available, falling back to Mapbox');
   } catch (e) {
-    console.warn('Google Places search error:', e);
+    console.warn('Google Places error, falling back to Mapbox:', e);
+  }
+  
+  // FALLBACK: Utiliser Mapbox Geocoding (toujours disponible)
+  try {
+    const mapboxToken = 'pk.eyJ1IjoiYmVsb3Zlbm9uZSIsImEiOiJjbTU1b3R1YWEwOHYyMmxzNmlicjYya2gwIn0.6o0e-rhHDDCx4OxLxd89Jg';
+    const proximity = userLocation ? `&proximity=${userLocation[0]},${userLocation[1]}` : '';
+    const bbox = userLocation
+      ? `&bbox=${userLocation[0] - 0.5},${userLocation[1] - 0.5},${userLocation[0] + 0.5},${userLocation[1] + 0.5}`
+      : '';
+    
+    const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxToken}&limit=10&language=fr${proximity}${bbox}&types=poi,address,place,locality,neighborhood&autocomplete=true&fuzzyMatch=true&country=CI`;
+    
+    const res = await fetch(mapboxUrl);
+    const data = await res.json();
+    
+    if (data.features && data.features.length > 0) {
+      return data.features.map(f => ({
+        type: 'place',
+        id: f.id,
+        name: f.text,
+        subtitle: f.place_name,
+        fullName: f.place_name,
+        coords: f.center,
+        category: f.properties?.category || '',
+      }));
+    }
+    
+    return [];
+  } catch (e) {
+    console.warn('Mapbox search error:', e);
     return [];
   }
 }

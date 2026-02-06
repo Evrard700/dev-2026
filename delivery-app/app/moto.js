@@ -902,58 +902,26 @@ export default function MotoScreen() {
                 setShowClientPopup(true);
               }}
             >
-              {/* Marqueur taille optimale pour Android (64px comme bouton client) */}
+              {/* Marker ULTRA-SIMPLE pour Android - UN SEUL View */}
               <View style={{
+                width: 64,
+                height: 64,
+                backgroundColor: markerColor,
+                borderRadius: 32,
+                borderWidth: 4,
+                borderColor: '#fff',
+                justifyContent: 'center',
                 alignItems: 'center',
+                elevation: 10,
               }}>
-                <View style={{
-                  width: 64,
-                  height: 64,
-                  backgroundColor: markerColor,
-                  borderRadius: 32,
-                  borderWidth: 4,
-                  borderColor: '#fff',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 6,
-                  elevation: 10,
-                }}>
-                  <Text style={{
-                    color: '#fff',
-                    fontSize: 22,
-                    fontWeight: 'bold',
-                  }}>{client.proximityNumber}</Text>
-                </View>
-                {/* Nom + distance toujours visibles */}
-                <View style={{
-                  marginTop: 6,
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                  paddingVertical: 5,
-                  paddingHorizontal: 10,
-                  borderRadius: 12,
-                }}>
-                  <Text style={{
-                    color: '#ffffff',
-                    fontSize: 13,
-                    fontWeight: '600',
-                    textAlign: 'center',
-                  }}>{client.nom}</Text>
-                  {client.distanceText && (
-                    <Text style={{
-                      color: '#4ade80',
-                      fontSize: 12,
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      marginTop: 2,
-                    }}>{client.distanceText}</Text>
-                  )}
-                </View>
+                <Text style={{
+                  color: '#fff',
+                  fontSize: 22,
+                  fontWeight: 'bold',
+                }}>{client.proximityNumber}</Text>
               </View>
               
-              {/* Callout natif Android */}
+              {/* Callout natif avec TOUTES les infos */}
               <MapboxGL.Callout
                 title={`${client.proximityNumber}. ${client.nom}`}
                 subtitle={client.distanceText ? `📍 ${client.distanceText}` : ''}

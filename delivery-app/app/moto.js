@@ -893,39 +893,40 @@ export default function MotoScreen() {
           const markerColor = allChecked ? '#27ae60' : '#c0392b';
           
           return (
-            <MapboxGL.PointAnnotation
+            <MapboxGL.MarkerView
               key={client.id}
               id={`client-${client.id}`}
               coordinate={[client.longitude, client.latitude]}
-              onSelected={() => {
-                setSelectedClient(client);
-                setShowClientPopup(true);
-              }}
               anchor={{ x: 0.5, y: 0.5 }}
             >
-              {/* ABSOLUMENT LE PLUS SIMPLE POSSIBLE - UN SEUL VIEW DIRECT */}
-              <View style={{
-                width: 60,
-                height: 60,
-                backgroundColor: markerColor,
-                borderRadius: 30,
-                borderWidth: 3,
-                borderColor: '#fff',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedClient(client);
+                  setShowClientPopup(true);
+                }}
+                style={{
+                  width: 64,
+                  height: 64,
+                  backgroundColor: markerColor,
+                  borderRadius: 32,
+                  borderWidth: 4,
+                  borderColor: '#fff',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: 5,
+                }}
+              >
                 <Text style={{
                   color: '#fff',
-                  fontSize: 20,
+                  fontSize: 24,
                   fontWeight: 'bold',
                 }}>{client.proximityNumber}</Text>
-              </View>
-              
-              {/* Callout avec nom + distance */}
-              <MapboxGL.Callout
-                title={`${client.proximityNumber}. ${client.nom} · ${client.distanceText}`}
-              />
-            </MapboxGL.PointAnnotation>
+              </TouchableOpacity>
+            </MapboxGL.MarkerView>
           );
         })}
         {routeGeoJSON && (

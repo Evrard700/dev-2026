@@ -51,10 +51,13 @@ const MAP_STYLES = [
 const ROUTE_UPDATE_INTERVAL = 5000; // 5s entre recalculs de route
 const CAMERA_UPDATE_DELAY = 50; // Délai ultra-court pour rotation instantanée
 const BEARING_SMOOTHING = 0.30; // Lissage faible = virages très réactifs
-const MIN_SPEED_FOR_ROTATION = 0.3; // Vitesse minimale (m/s) pour faire tourner la carte (~1 km/h)
+const MIN_SPEED_FOR_ROTATION = 1.4; // ~5 km/h (cahier des charges)
 const MIN_DISTANCE_FOR_BEARING = 0.00003; // Distance minimale réduite pour calcul bearing fréquent
 const NAVIGATION_ZOOM = 18; // Zoom fixe pendant navigation
 const NAVIGATION_PITCH = 60; // Inclinaison fixe pendant navigation
+const AUTO_ROTATION_IDLE_TIMEOUT = 10000; // 10s d'inactivité avant réactivation auto-rotation
+const COMPASS_STATE_REFRESH_FPS = 60; // 60 fps pour rotation fluide
+const TURN_DETECTION_THRESHOLD = 5; // Degrés pour détecter un virage
 
 // Calculate bearing between two points
 function calcBearing(from, to) {
@@ -99,6 +102,12 @@ export default function MotoScreen() {
   const isNavigatingRef = useRef(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [showLayerPicker, setShowLayerPicker] = useState(false);
+  
+  // 🧭 MODE NAVIGATION DYNAMIQUE
+  const [compassMode, setCompassMode] = useState('inactive'); // 'inactive' | 'active' | 'manual-override'
+  const compassModeRef = useRef('inactive');
+  const lastUserInteractionRef = useRef(Date.now());
+  const autoRotationTimeoutRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -210,39 +219,54 @@ export default function MotoScreen() {
         }
       }
 
-      // Mode GPS classique: Itinéraire toujours vertical (heading up navigation)
+      // 🧭 MODE NAVIGATION DYNAMIQUE : Rotation synchrone avec position au tiers inférieur
       if (isNavigatingRef.current && routeTargetRef.current && isMoving) {
-        if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
-        cameraUpdateTimer.current = setTimeout(() => {
-          const bearing = smoothedBearingRef.current; // Direction lissée
-          
-          if (Platform.OS === 'web' && mapRef.current) {
-            const map = mapRef.current.getMap?.();
-            if (map) {
-              // Rotation instantanée pour suivi temps réel
-              map.easeTo({
-                center: [newLoc[0], newLoc[1]],
-                bearing: bearing, // Tourner selon direction
-                zoom: NAVIGATION_ZOOM,
+        // Activer le mode boussole si pas déjà actif
+        if (compassModeRef.current === 'inactive') {
+          compassModeRef.current = 'active';
+          setCompassMode('active');
+        }
+        
+        // Appliquer la rotation SEULEMENT si mode active (pas en manual-override)
+        if (compassModeRef.current === 'active') {
+          if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
+          cameraUpdateTimer.current = setTimeout(() => {
+            const bearing = smoothedBearingRef.current; // Direction lissée
+            
+            if (Platform.OS === 'web' && mapRef.current) {
+              const map = mapRef.current.getMap?.();
+              if (map) {
+                // Rotation à 60 fps avec position au tiers inférieur
+                map.easeTo({
+                  center: [newLoc[0], newLoc[1]],
+                  bearing: bearing, // Vecteur de déplacement vers le haut
+                  zoom: NAVIGATION_ZOOM,
+                  pitch: NAVIGATION_PITCH,
+                  duration: 1000 / COMPASS_STATE_REFRESH_FPS, // ~16ms pour 60fps
+                  easing: (t) => t, // Linéaire = plus fluide
+                  // Position au tiers inférieur (padding bottom)
+                  padding: { bottom: window.innerHeight * 0.33, top: 0, left: 0, right: 0 },
+                });
+              }
+            } else if (cameraRef.current) {
+              // Mobile: rotation fluide avec padding pour position au tiers inférieur
+              cameraRef.current.setCamera({
+                centerCoordinate: newLoc,
+                zoomLevel: NAVIGATION_ZOOM,
                 pitch: NAVIGATION_PITCH,
-                duration: 250, // Animation ultra-rapide pour temps réel
-                easing: (t) => t, // Linéaire pour plus de naturel
+                heading: bearing, // Vecteur de déplacement vers le haut
+                animationDuration: 1000 / COMPASS_STATE_REFRESH_FPS, // 60fps
+                animationMode: 'easeTo',
+                // Padding Android : position au tiers inférieur
+                padding: Platform.OS === 'android' 
+                  ? { paddingBottom: 300, paddingTop: 0, paddingLeft: 0, paddingRight: 0 }
+                  : undefined,
               });
             }
-          } else if (cameraRef.current) {
-            // Mobile: rotation instantanée pour itinéraire vertical
-            cameraRef.current.setCamera({
-              centerCoordinate: newLoc,
-              zoomLevel: NAVIGATION_ZOOM,
-              pitch: NAVIGATION_PITCH,
-              heading: bearing, // Tourner selon direction
-              animationDuration: 250, // Animation ultra-rapide
-              animationMode: 'easeTo',
-            });
-          }
-        }, CAMERA_UPDATE_DELAY);
+          }, CAMERA_UPDATE_DELAY);
+        }
       } else if (isNavigatingRef.current && routeTargetRef.current && !isMoving) {
-        // Immobile: juste centrer, garder orientation
+        // Immobile: juste centrer, garder orientation (pas de rotation)
         if (cameraUpdateTimer.current) clearTimeout(cameraUpdateTimer.current);
         cameraUpdateTimer.current = setTimeout(() => {
           if (Platform.OS === 'web' && mapRef.current) {
@@ -345,6 +369,26 @@ export default function MotoScreen() {
     setShowSearchResults(false);
     setShowLayerPicker(false);
     Keyboard.dismiss();
+    
+    // 🧭 MODE NAVIGATION DYNAMIQUE : Suspendre auto-rotation sur interaction manuelle
+    if (isNavigatingRef.current) {
+      lastUserInteractionRef.current = Date.now();
+      if (compassModeRef.current === 'active') {
+        compassModeRef.current = 'manual-override';
+        setCompassMode('manual-override');
+      }
+      
+      // Timer de réactivation automatique après 10s d'inactivité
+      if (autoRotationTimeoutRef.current) {
+        clearTimeout(autoRotationTimeoutRef.current);
+      }
+      autoRotationTimeoutRef.current = setTimeout(() => {
+        if (isNavigatingRef.current && compassModeRef.current === 'manual-override') {
+          compassModeRef.current = 'active';
+          setCompassMode('active');
+        }
+      }, AUTO_ROTATION_IDLE_TIMEOUT);
+    }
   }, []);
 
   const handleMapLongPress = useCallback((event) => {
@@ -547,6 +591,11 @@ export default function MotoScreen() {
       routeTargetRef.current = client;
       isNavigatingRef.current = true;
       setIsNavigating(true);
+      
+      // 🧭 MODE NAVIGATION DYNAMIQUE : Activer la boussole
+      compassModeRef.current = 'active';
+      setCompassMode('active');
+      
       // Calculer direction initiale vers destination
       const navBearing = calcBearing(userLocation, [client.longitude, client.latitude]);
       userBearingRef.current = navBearing;
@@ -606,6 +655,15 @@ export default function MotoScreen() {
     setIsNavigating(false);
     isNavigatingRef.current = false;
     routeTargetRef.current = null;
+    
+    // 🧭 MODE NAVIGATION DYNAMIQUE : Désactiver la boussole
+    compassModeRef.current = 'inactive';
+    setCompassMode('inactive');
+    if (autoRotationTimeoutRef.current) {
+      clearTimeout(autoRotationTimeoutRef.current);
+      autoRotationTimeoutRef.current = null;
+    }
+    
     if (routeIntervalRef.current) {
       clearInterval(routeIntervalRef.current);
       routeIntervalRef.current = null;
@@ -746,12 +804,47 @@ export default function MotoScreen() {
 
   const centerOnUser = useCallback(() => {
     if (!userLocation) return;
-    // Reset navigation state when centering on user
+    
+    // 🧭 MODE NAVIGATION DYNAMIQUE : Réactiver auto-rotation immédiatement
+    if (isNavigatingRef.current) {
+      if (autoRotationTimeoutRef.current) {
+        clearTimeout(autoRotationTimeoutRef.current);
+      }
+      compassModeRef.current = 'active';
+      setCompassMode('active');
+      // Pas de clearRoute() - juste recentrer avec mode boussole réactivé
+      if (Platform.OS === 'web' && mapRef.current) {
+        const map = mapRef.current.getMap?.();
+        if (map) {
+          map.easeTo({
+            center: userLocation,
+            zoom: NAVIGATION_ZOOM,
+            pitch: NAVIGATION_PITCH,
+            bearing: smoothedBearingRef.current,
+            duration: 1000,
+            padding: { bottom: window.innerHeight * 0.33, top: 0, left: 0, right: 0 },
+          });
+        }
+      } else if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: userLocation,
+          zoomLevel: NAVIGATION_ZOOM,
+          pitch: NAVIGATION_PITCH,
+          heading: smoothedBearingRef.current,
+          animationDuration: 1000,
+          padding: Platform.OS === 'android' 
+            ? { paddingBottom: 300, paddingTop: 0, paddingLeft: 0, paddingRight: 0 }
+            : undefined,
+        });
+      }
+      return; // Ne pas exécuter le code ci-dessous
+    }
+    
+    // Comportement normal hors navigation : arrêter la navigation si active
     if (isNavigating) {
       clearRoute();
     }
     if (Platform.OS === 'web' && mapRef.current) {
-      // Use setCamera for more reliable behavior with explicit pitch/bearing reset
       mapRef.current.setCamera({
         centerCoordinate: userLocation,
         zoomLevel: 16,
@@ -789,9 +882,9 @@ export default function MotoScreen() {
   }, []);
 
   // Calculer clients enrichis avec numéros et distances (pour markers ET liste)
-  // Uses stableUserLocation (updates only when moved >50m) to avoid recalc on every GPS tick
+  // 🔄 MISE À JOUR EN TEMPS RÉEL : Utilise userLocation (non stable) pour recalcul continu
   const enrichedClients = useMemo(() => {
-    if (!stableUserLocation) {
+    if (!userLocation) {
       // Si pas de position utilisateur, juste afficher dans l'ordre d'ajout
       return clients.map((client, index) => ({
         ...client,
@@ -804,8 +897,8 @@ export default function MotoScreen() {
     // Calculer la VRAIE distance géographique de chaque client
     const clientsWithDistance = clients.map(client => {
       const distance = calculateDistance(
-        stableUserLocation[1], // lat utilisateur
-        stableUserLocation[0], // lng utilisateur
+        userLocation[1], // lat utilisateur (temps réel)
+        userLocation[0], // lng utilisateur (temps réel)
         client.latitude,
         client.longitude
       );
@@ -829,7 +922,7 @@ export default function MotoScreen() {
         distanceText: distanceText, // "350 m" ou "1.2 km"
       };
     });
-  }, [clients, stableUserLocation, calculateDistance]);
+  }, [clients, userLocation, calculateDistance]);
 
   const handleSearch = useCallback((text) => {
     setSearchQuery(text);
@@ -964,6 +1057,8 @@ export default function MotoScreen() {
         {enrichedClients.map((client) => {
           const allChecked = !!allCheckedMap[client.id];
           const markerColor = allChecked ? '#27ae60' : '#c0392b';
+          // 🔍 VISIBILITÉ ZOOM : Afficher les noms uniquement si zoom >= 14
+          const showLabel = mapZoom >= 14;
           
           return (
             <MapboxGL.MarkerView
@@ -972,69 +1067,87 @@ export default function MotoScreen() {
               coordinate={[client.longitude, client.latitude]}
               anchor={{ x: 0.5, y: 0.5 }}
             >
-              <Pressable
-                onPress={() => {
-                  setSelectedClient(client);
-                  setShowClientPopup(true);
-                }}
-                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                android_ripple={{ color: 'rgba(255,255,255,0.3)', radius: 40 }}
+              <View
+                collapsable={false}
                 style={{
                   alignItems: 'center',
                   justifyContent: 'center',
+                  overflow: 'visible',
                 }}
               >
-                {/* Cercle avec numéro */}
-                <View style={{
-                  width: 64,
-                  height: 64,
-                  backgroundColor: markerColor,
-                  borderRadius: 32,
-                  borderWidth: 4,
-                  borderColor: '#fff',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                  elevation: 5,
-                }}>
-                  <Text style={{
-                    color: '#fff',
-                    fontSize: 24,
-                    fontWeight: 'bold',
-                  }}>{client.proximityNumber}</Text>
-                </View>
-                
-                {/* Label nom + distance en dessous */}
-                <View style={{
-                  marginTop: 4,
-                  backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderRadius: 8,
-                  maxWidth: 150,
-                }}>
-                  <Text style={{
-                    color: '#fff',
-                    fontSize: 12,
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                  }} numberOfLines={1}>
-                    {client.nom}
-                  </Text>
-                  <Text style={{
-                    color: '#4ade80',
-                    fontSize: 11,
-                    fontWeight: '600',
-                    textAlign: 'center',
-                    marginTop: 2,
-                  }}>
-                    {client.distanceText}
-                  </Text>
-                </View>
-              </Pressable>
+                <Pressable
+                  onPress={() => {
+                    console.log('Marker pressed:', client.nom);
+                    setSelectedClient(client);
+                    setShowClientPopup(true);
+                  }}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                  android_ripple={{ color: 'rgba(255,255,255,0.3)', radius: 40 }}
+                  style={{
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {/* Cercle avec numéro - TOUJOURS VISIBLE */}
+                  <View
+                    collapsable={false}
+                    style={{
+                      width: 64,
+                      height: 64,
+                      backgroundColor: markerColor,
+                      borderRadius: 32,
+                      borderWidth: 4,
+                      borderColor: '#fff',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: 5,
+                    }}
+                  >
+                    <Text style={{
+                      color: '#fff',
+                      fontSize: 24,
+                      fontWeight: 'bold',
+                    }}>{client.proximityNumber}</Text>
+                  </View>
+                  
+                  {/* Label nom + distance - MASQUÉ au dézoom */}
+                  {showLabel && (
+                    <View
+                      collapsable={false}
+                      style={{
+                        marginTop: 4,
+                        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 8,
+                        maxWidth: 150,
+                      }}
+                    >
+                      <Text style={{
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: 'bold',
+                        textAlign: 'center',
+                      }} numberOfLines={1}>
+                        {client.nom}
+                      </Text>
+                      <Text style={{
+                        color: '#4ade80',
+                        fontSize: 11,
+                        fontWeight: '600',
+                        textAlign: 'center',
+                        marginTop: 2,
+                      }}>
+                        {client.distanceText}
+                      </Text>
+                    </View>
+                  )}
+                </Pressable>
+              </View>
             </MapboxGL.MarkerView>
           );
         })}
@@ -1160,16 +1273,39 @@ export default function MotoScreen() {
         </View>
 
         {/* Position/Center button - long press = fit all clients */}
+        {/* 🧭 Indicateur de mode boussole */}
         <Animated.View style={{ transform: [{ scale: posBtnScale }] }}>
-          <Pressable style={styles.controlBtn} onPress={centerOnUser} onLongPress={fitAllClients} {...animPress(posBtnScale)}>
-            <View style={styles.crosshairIcon}>
-              <View style={styles.crosshairRing} />
-              <View style={styles.crosshairDot} />
-              <View style={[styles.crosshairLine, styles.crosshairTop]} />
-              <View style={[styles.crosshairLine, styles.crosshairBottom]} />
-              <View style={[styles.crosshairLine, styles.crosshairLeft]} />
-              <View style={[styles.crosshairLine, styles.crosshairRight]} />
-            </View>
+          <Pressable 
+            style={[
+              styles.controlBtn, 
+              compassMode === 'active' && styles.controlBtnCompassActive,
+              compassMode === 'manual-override' && styles.controlBtnCompassOverride
+            ]} 
+            onPress={centerOnUser} 
+            onLongPress={fitAllClients} 
+            {...animPress(posBtnScale)}
+          >
+            {compassMode === 'inactive' ? (
+              <View style={styles.crosshairIcon}>
+                <View style={styles.crosshairRing} />
+                <View style={styles.crosshairDot} />
+                <View style={[styles.crosshairLine, styles.crosshairTop]} />
+                <View style={[styles.crosshairLine, styles.crosshairBottom]} />
+                <View style={[styles.crosshairLine, styles.crosshairLeft]} />
+                <View style={[styles.crosshairLine, styles.crosshairRight]} />
+              </View>
+            ) : (
+              <View style={styles.compassIcon}>
+                <Text style={[
+                  styles.compassArrow,
+                  compassMode === 'active' && styles.compassArrowActive
+                ]}>↑</Text>
+                <View style={[
+                  styles.compassDot,
+                  compassMode === 'active' && styles.compassDotActive
+                ]} />
+              </View>
+            )}
           </Pressable>
         </Animated.View>
       </View>
@@ -1609,6 +1745,45 @@ const styles = StyleSheet.create({
   crosshairBottom: { width: 2, height: 5, bottom: 0 },
   crosshairLeft: { width: 5, height: 2, left: 0 },
   crosshairRight: { width: 5, height: 2, right: 0 },
+
+  // 🧭 Compass icon (Mode Navigation Dynamique)
+  compassIcon: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  compassArrow: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#DC2626',
+    position: 'absolute',
+    top: -2,
+  },
+  compassArrowActive: {
+    color: '#4285F4', // Bleu quand actif
+  },
+  compassDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#DC2626',
+    position: 'absolute',
+    bottom: 2,
+  },
+  compassDotActive: {
+    backgroundColor: '#4285F4', // Bleu quand actif
+  },
+  controlBtnCompassActive: {
+    backgroundColor: 'rgba(66, 133, 244, 0.15)', // Fond bleu léger quand actif
+    borderWidth: 2,
+    borderColor: '#4285F4',
+  },
+  controlBtnCompassOverride: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 2,
+    borderColor: '#FFA500', // Orange quand en manuel
+  },
 
   // Layer picker
   layerPickerBackdrop: {

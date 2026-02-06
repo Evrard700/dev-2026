@@ -901,59 +901,29 @@ export default function MotoScreen() {
                 setSelectedClient(client);
                 setShowClientPopup(true);
               }}
+              anchor={{ x: 0.5, y: 0.5 }}
             >
-              {/* Marker avec nom + distance TOUJOURS visibles */}
-              <View style={{ alignItems: 'center' }}>
-                {/* Cercle avec numéro */}
-                <View style={{
-                  width: 64,
-                  height: 64,
-                  backgroundColor: markerColor,
-                  borderRadius: 32,
-                  borderWidth: 4,
-                  borderColor: '#fff',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  elevation: 10,
-                }}>
-                  <Text style={{
-                    color: '#fff',
-                    fontSize: 22,
-                    fontWeight: 'bold',
-                  }}>{client.proximityNumber}</Text>
-                </View>
-                
-                {/* Nom + distance en-dessous */}
-                {mapZoom >= 13 && (
-                  <View style={{
-                    marginTop: 4,
-                    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                    paddingVertical: 3,
-                    paddingHorizontal: 8,
-                    borderRadius: 8,
-                    minWidth: 80,
-                  }}>
-                    <Text style={{
-                      color: '#fff',
-                      fontSize: 11,
-                      fontWeight: '600',
-                      textAlign: 'center',
-                    }} numberOfLines={1}>{client.nom}</Text>
-                    <Text style={{
-                      color: '#4ade80',
-                      fontSize: 10,
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      marginTop: 1,
-                    }}>{client.distanceText}</Text>
-                  </View>
-                )}
+              {/* ABSOLUMENT LE PLUS SIMPLE POSSIBLE - UN SEUL VIEW DIRECT */}
+              <View style={{
+                width: 60,
+                height: 60,
+                backgroundColor: markerColor,
+                borderRadius: 30,
+                borderWidth: 3,
+                borderColor: '#fff',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+                <Text style={{
+                  color: '#fff',
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                }}>{client.proximityNumber}</Text>
               </View>
               
-              {/* Callout natif avec TOUTES les infos */}
+              {/* Callout avec nom + distance */}
               <MapboxGL.Callout
-                title={`${client.proximityNumber}. ${client.nom}`}
-                subtitle={client.distanceText ? `📍 ${client.distanceText}` : ''}
+                title={`${client.proximityNumber}. ${client.nom} · ${client.distanceText}`}
               />
             </MapboxGL.PointAnnotation>
           );

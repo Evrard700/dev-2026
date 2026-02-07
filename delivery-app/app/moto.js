@@ -33,6 +33,15 @@ import {
 import ClientFormModal from '../src/components/ClientFormModal';
 import MotoClientPopup from '../src/components/MotoClientPopup';
 import SettingsPanel from '../src/components/SettingsPanel';
+import NavigationBanner from '../src/components/NavigationBanner';
+import {
+  parseRouteSteps,
+  getNextInstruction,
+  isOffRoute,
+  speakInstruction,
+  stopSpeaking,
+  getRouteStats,
+} from '../src/utils/navigation';
 
 let MapboxGL, WebMapView;
 if (Platform.OS === 'web') {
@@ -95,6 +104,11 @@ export default function MotoScreen() {
   const [showClientPopup, setShowClientPopup] = useState(false);
   const [routeGeoJSON, setRouteGeoJSON] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
+  const [routeSteps, setRouteSteps] = useState([]);
+  const [currentInstruction, setCurrentInstruction] = useState(null);
+  const [lastSpokenStepId, setLastSpokenStepId] = useState(null);
+  const routeStepsRef = useRef([]);
+  const lastSpokenStepIdRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [mapStyle, setMapStyle] = useState(MAP_STYLES[0].url);
   const [is3D, setIs3D] = useState(false);
@@ -319,7 +333,7 @@ export default function MotoScreen() {
             const distance = (route.distance / 1000).toFixed(1);
             const sk = `${loc[0].toFixed(4)},${loc[1].toFixed(4)}`;
             const ek = `${target.longitude.toFixed(4)},${target.latitude.toFixed(4)}`;
-            cacheRoute(sk, ek, { geometry: route.geometry, duration, distance });
+            cacheRoute(sk, ek, { geometry: route.geometry, duration, distance, steps: route.legs });
             setRouteGeoJSON({
               type: 'FeatureCollection',
               features: [{ type: 'Feature', geometry: route.geometry, properties: {} }],
@@ -329,6 +343,12 @@ export default function MotoScreen() {
               distance,
               clientName: target.nom,
             });
+            
+            // 🎯 TURN-BY-TURN : Mettre à jour les steps après recalcul
+            const steps = parseRouteSteps(route);
+            setRouteSteps(steps);
+            routeStepsRef.current = steps;
+            console.log(`📍 Itinéraire recalculé: ${steps.length} étapes`);
             if (route.distance < 50) {
               clearInterval(routeIntervalRef.current);
               setIsNavigating(false);
@@ -363,6 +383,38 @@ export default function MotoScreen() {
       if (routeIntervalRef.current) clearInterval(routeIntervalRef.current);
     };
   }, []);
+
+  // 🎯 NAVIGATION TURN-BY-TURN : Suivre la position et déclencher les instructions
+  useEffect(() => {
+    if (!isNavigating || !userLocation || routeStepsRef.current.length === 0) {
+      setCurrentInstruction(null);
+      return;
+    }
+
+    // Vérifier si hors route
+    if (routeGeoJSON && isOffRoute(userLocation, routeGeoJSON.features[0].geometry)) {
+      console.warn('⚠️ Hors route détecté, recalcul en cours...');
+      // Le recalcul automatique est géré par l'intervalle existant
+    }
+
+    // Obtenir la prochaine instruction
+    const instruction = getNextInstruction(
+      userLocation, 
+      routeStepsRef.current, 
+      lastSpokenStepIdRef.current
+    );
+
+    if (instruction) {
+      setCurrentInstruction(instruction);
+
+      // Déclencher l'instruction vocale si nécessaire
+      if (instruction.shouldSpeak) {
+        speakInstruction(instruction.step, instruction.distanceToStep);
+        setLastSpokenStepId(instruction.step.id);
+        lastSpokenStepIdRef.current = instruction.step.id;
+      }
+    }
+  }, [userLocation, isNavigating, routeGeoJSON]);
 
   // Close search results and layer picker when user touches the map
   const handleMapInteraction = useCallback(() => {
@@ -578,7 +630,7 @@ export default function MotoScreen() {
     const startKey = `${userLocation[0].toFixed(4)},${userLocation[1].toFixed(4)}`;
     const endKey = `${client.longitude.toFixed(4)},${client.latitude.toFixed(4)}`;
 
-    const applyRoute = (geometry, duration, distance, offline) => {
+    const applyRoute = (geometry, duration, distance, offline, route = null) => {
       setRouteGeoJSON({
         type: 'FeatureCollection',
         features: [{ type: 'Feature', geometry, properties: {} }],
@@ -588,6 +640,17 @@ export default function MotoScreen() {
         distance,
         clientName: client.nom + (offline ? ' (hors ligne)' : ''),
       });
+      
+      // 🎯 TURN-BY-TURN : Parser les steps de navigation
+      if (route) {
+        const steps = parseRouteSteps(route);
+        setRouteSteps(steps);
+        routeStepsRef.current = steps;
+        setLastSpokenStepId(null);
+        lastSpokenStepIdRef.current = null;
+        console.log(`📍 Navigation: ${steps.length} étapes chargées`);
+      }
+      
       routeTargetRef.current = client;
       isNavigatingRef.current = true;
       setIsNavigating(true);
@@ -632,8 +695,8 @@ export default function MotoScreen() {
         const route = data.routes[0];
         const duration = Math.round(route.duration / 60);
         const distance = (route.distance / 1000).toFixed(1);
-        await cacheRoute(startKey, endKey, { geometry: route.geometry, duration, distance });
-        applyRoute(route.geometry, duration, distance, false);
+        await cacheRoute(startKey, endKey, { geometry: route.geometry, duration, distance, steps: route.legs });
+        applyRoute(route.geometry, duration, distance, false, route);
       }
     } catch (e) {
       const cached = await getCachedRoute(startKey, endKey);
@@ -650,8 +713,16 @@ export default function MotoScreen() {
   }, [userLocation]);
 
   const clearRoute = useCallback(() => {
+    // 🔊 Arrêter les instructions vocales
+    stopSpeaking();
+    
     setRouteGeoJSON(null);
     setRouteInfo(null);
+    setRouteSteps([]);
+    setCurrentInstruction(null);
+    setLastSpokenStepId(null);
+    routeStepsRef.current = [];
+    lastSpokenStepIdRef.current = null;
     setIsNavigating(false);
     isNavigatingRef.current = false;
     routeTargetRef.current = null;
@@ -1067,87 +1138,81 @@ export default function MotoScreen() {
               coordinate={[client.longitude, client.latitude]}
               anchor={{ x: 0.5, y: 0.5 }}
             >
-              <View
-                collapsable={false}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  console.log('🎯 Marker pressed:', client.nom, 'ID:', client.id);
+                  // Force l'état immédiatement
+                  const clientData = enrichedClients.find(c => c.id === client.id);
+                  if (clientData) {
+                    setSelectedClient(clientData);
+                    setShowClientPopup(true);
+                    console.log('✅ Popup should open for:', clientData.nom);
+                  }
+                }}
                 style={{
                   alignItems: 'center',
                   justifyContent: 'center',
-                  overflow: 'visible',
+                  zIndex: 1000,
                 }}
               >
-                <Pressable
-                  onPress={() => {
-                    console.log('Marker pressed:', client.nom);
-                    setSelectedClient(client);
-                    setShowClientPopup(true);
-                  }}
-                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                  android_ripple={{ color: 'rgba(255,255,255,0.3)', radius: 40 }}
+                {/* Cercle avec numéro - TOUJOURS VISIBLE */}
+                <View
                   style={{
-                    alignItems: 'center',
+                    width: 64,
+                    height: 64,
+                    backgroundColor: markerColor,
+                    borderRadius: 32,
+                    borderWidth: 4,
+                    borderColor: '#fff',
                     justifyContent: 'center',
+                    alignItems: 'center',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: 5,
                   }}
                 >
-                  {/* Cercle avec numéro - TOUJOURS VISIBLE */}
+                  <Text style={{
+                    color: '#fff',
+                    fontSize: 24,
+                    fontWeight: 'bold',
+                  }}>{client.proximityNumber}</Text>
+                </View>
+                
+                {/* Label nom + distance - MASQUÉ au dézoom */}
+                {showLabel && (
                   <View
-                    collapsable={false}
                     style={{
-                      width: 64,
-                      height: 64,
-                      backgroundColor: markerColor,
-                      borderRadius: 32,
-                      borderWidth: 4,
-                      borderColor: '#fff',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 4,
-                      elevation: 5,
+                      marginTop: 4,
+                      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      maxWidth: 150,
                     }}
                   >
                     <Text style={{
                       color: '#fff',
-                      fontSize: 24,
+                      fontSize: 12,
                       fontWeight: 'bold',
-                    }}>{client.proximityNumber}</Text>
+                      textAlign: 'center',
+                    }} numberOfLines={1}>
+                      {client.nom}
+                    </Text>
+                    <Text style={{
+                      color: '#4ade80',
+                      fontSize: 11,
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      marginTop: 2,
+                    }}>
+                      {client.distanceText}
+                    </Text>
                   </View>
-                  
-                  {/* Label nom + distance - MASQUÉ au dézoom */}
-                  {showLabel && (
-                    <View
-                      collapsable={false}
-                      style={{
-                        marginTop: 4,
-                        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 8,
-                        maxWidth: 150,
-                      }}
-                    >
-                      <Text style={{
-                        color: '#fff',
-                        fontSize: 12,
-                        fontWeight: 'bold',
-                        textAlign: 'center',
-                      }} numberOfLines={1}>
-                        {client.nom}
-                      </Text>
-                      <Text style={{
-                        color: '#4ade80',
-                        fontSize: 11,
-                        fontWeight: '600',
-                        textAlign: 'center',
-                        marginTop: 2,
-                      }}>
-                        {client.distanceText}
-                      </Text>
-                    </View>
-                  )}
-                </Pressable>
-              </View>
+                )}
+              </TouchableOpacity>
             </MapboxGL.MarkerView>
           );
         })}
@@ -1330,14 +1395,22 @@ export default function MotoScreen() {
         </>
       )}
 
-      {routeInfo && (
-        <View style={[styles.routeBanner, isNavigating && styles.routeBannerNav]}>
-          {isNavigating && <View style={styles.navPulse} />}
+      {/* 🎯 NAVIGATION TURN-BY-TURN Banner */}
+      {isNavigating && currentInstruction && (
+        <NavigationBanner
+          currentInstruction={currentInstruction}
+          routeStats={getRouteStats(routeSteps, currentInstruction?.step?.id)}
+          onClose={clearRoute}
+        />
+      )}
+
+      {/* Fallback: Bannière simple si navigation mais pas d'instructions */}
+      {routeInfo && !isNavigating && (
+        <View style={styles.routeBanner}>
           <View style={styles.routeInfoContent}>
             <Text style={styles.routeDestination}>{routeInfo.clientName}</Text>
             <Text style={styles.routeDetails}>
               {routeInfo.duration} min {'\u00B7'} {routeInfo.distance} km
-              {isNavigating ? ` \u00B7 En cours` : ''}
             </Text>
           </View>
           <TouchableOpacity style={styles.routeCloseBtn} onPress={clearRoute}>

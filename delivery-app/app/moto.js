@@ -17,7 +17,6 @@ import {
 import { useRouter } from 'expo-router';
 import { getDirectionsUrl, parseGoogleMapsUrl, MAPBOX_TOKEN } from '../src/utils/mapbox';
 import { getCurrentLocation, watchLocation } from '../src/utils/location';
-import { searchPlaces } from '../src/utils/search';
 import {
   getMotoClients,
   addMotoClient,
@@ -122,13 +121,9 @@ export default function MotoScreen() {
   const compassModeRef = useRef('inactive');
   const lastUserInteractionRef = useRef(Date.now());
   const autoRotationTimeoutRef = useRef(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
   const [showClientsList, setShowClientsList] = useState(false);
   const [clientsSelectionMode, setClientsSelectionMode] = useState(false);
   const [selectedClients, setSelectedClients] = useState([]);
-  const searchTimerRef = useRef(null);
   const cameraUpdateTimer = useRef(null);
 
   // Map view state
@@ -418,7 +413,6 @@ export default function MotoScreen() {
 
   // Close search results and layer picker when user touches the map
   const handleMapInteraction = useCallback(() => {
-    setShowSearchResults(false);
     setShowLayerPicker(false);
     Keyboard.dismiss();
     
@@ -995,55 +989,7 @@ export default function MotoScreen() {
     });
   }, [clients, userLocation, calculateDistance]);
 
-  const handleSearch = useCallback((text) => {
-    setSearchQuery(text);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (!text.trim()) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-    // Recherche lieux uniquement (Mapbox POI)
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const results = await searchPlaces(text, userLocation);
-        if (results.length > 0) {
-          setSearchResults(results);
-          setShowSearchResults(true);
-        } else {
-          setSearchResults([]);
-          setShowSearchResults(false);
-        }
-      } catch (e) {
-        setSearchResults([]);
-        setShowSearchResults(false);
-      }
-    }, 300);
-  }, [userLocation]);
-
-  const handleSelectSearchResult = useCallback((result) => {
-    setSearchQuery(result.name);
-    setShowSearchResults(false);
-    setSearchResults([]);
-    Keyboard.dismiss();
-    if (Platform.OS === 'web' && mapRef.current) {
-      mapRef.current.setCamera({
-        centerCoordinate: result.coords,
-        zoomLevel: 16,
-        pitch: 0,
-        bearing: 0,
-        animationDuration: 1200,
-      });
-    } else if (cameraRef.current) {
-      cameraRef.current.setCamera({
-        centerCoordinate: result.coords,
-        zoomLevel: 16,
-        pitch: 0,
-        heading: 0,
-        animationDuration: 1200,
-      });
-    }
-  }, []);
+  // Search bar removed as requested
 
   const webMarkers = useMemo(() => {
     return enrichedClients.map(client => {
@@ -1251,50 +1197,6 @@ export default function MotoScreen() {
           </View>
         </Pressable>
       </Animated.View>
-
-      {/* Search bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>S</Text>
-          <TextInput
-            style={styles.searchInput}
-            value={searchQuery}
-            onChangeText={handleSearch}
-            placeholder="Rechercher un lieu..."
-            placeholderTextColor="#999"
-            returnKeyType="search"
-            onFocus={() => { if (searchResults.length > 0) setShowSearchResults(true); }}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); setShowSearchResults(false); }}>
-              <Text style={styles.searchClear}>x</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        {showSearchResults && searchResults.length > 0 && (
-          <View style={styles.searchResultsList}>
-            {searchResults.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.searchResultItem}
-                onPress={() => handleSelectSearchResult(item)}
-              >
-                <View style={styles.searchResultIcon}>
-                  <Text style={styles.searchResultIconText}>📍</Text>
-                </View>
-                <View style={styles.searchResultInfo}>
-                  <Text style={styles.searchResultName} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text style={styles.searchResultAddress} numberOfLines={2}>
-                    {item.subtitle || item.fullName || ''}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
 
       {/* Map controls - bottom right */}
       <View style={styles.bottomControls}>
@@ -1986,116 +1888,6 @@ const styles = StyleSheet.create({
   hintText: { color: '#8e8e93', fontSize: 14, fontWeight: '500' },
 
   // Search bar
-  searchContainer: {
-    position: 'absolute',
-    top: 20,
-    left: 74,
-    right: 16,
-    zIndex: 10,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    height: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  searchIcon: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#DC2626',
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#000',
-    paddingVertical: 0,
-  },
-  searchClear: {
-    fontSize: 16,
-    color: '#8e8e93',
-    fontWeight: '600',
-    paddingLeft: 10,
-  },
-  searchResultsList: {
-    backgroundColor: 'rgba(255,255,255,0.98)',
-    borderRadius: 16,
-    marginTop: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
-    overflow: 'hidden',
-  },
-  searchResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f2f2f7',
-    gap: 12,
-  },
-  searchResultIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#EBF5FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchResultIconText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#DC2626',
-  },
-  searchResultInfo: {
-    flex: 1,
-  },
-  searchResultName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
-  },
-  searchResultAddress: {
-    fontSize: 12,
-    color: '#8e8e93',
-    marginTop: 2,
-  },
-  searchResultItemClient: {
-    backgroundColor: '#FFF7ED',
-  },
-  searchResultIconClient: {
-    backgroundColor: '#DC2626',
-  },
-  searchResultNameClient: {
-    color: '#DC2626',
-    fontWeight: '700',
-  },
-  searchResultDistBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4ade80',
-    backgroundColor: 'rgba(74,222,128,0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  searchResultScore: {
-    fontSize: 10,
-    color: '#10b981',
-    marginTop: 3,
-    fontWeight: '600',
-  },
-
   // Clients list button - bottom left
   clientsListBtn: {
     position: 'absolute',

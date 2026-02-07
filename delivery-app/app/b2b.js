@@ -49,10 +49,6 @@ const MAP_STYLES = [
 export default function B2BScreen() {
   const router = useRouter();
   
-  // MVP: B2B mode disabled - redirect to MOTO
-  useEffect(() => {
-    router.replace('/moto');
-  }, []);
   const mapRef = useRef(null);
   const cameraRef = useRef(null);
 

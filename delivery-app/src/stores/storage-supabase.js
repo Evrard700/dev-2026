@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import StorageAdapter from "../lib/storage-adapter";
 
 const MOTO_CLIENTS_CACHE_KEY = '@moto_clients_cache';
 const MOTO_ORDERS_CACHE_KEY = '@moto_orders_cache';
@@ -30,18 +30,18 @@ export async function getMotoClients() {
     if (error) {
       console.error('Supabase error, falling back to cache:', error);
       // Fallback to cache
-      const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
+      const cached = await StorageAdapter.getItem(MOTO_CLIENTS_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     }
 
     // Update cache
-    await AsyncStorage.setItem(MOTO_CLIENTS_CACHE_KEY, JSON.stringify(data));
+    await StorageAdapter.setItem(MOTO_CLIENTS_CACHE_KEY, JSON.stringify(data));
     return data || [];
   } catch (e) {
     console.error('Error getting moto clients:', e);
     // Fallback to cache
     try {
-      const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
+      const cached = await StorageAdapter.getItem(MOTO_CLIENTS_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     } catch {
       return [];
@@ -163,18 +163,18 @@ export async function getMotoOrders() {
     if (error) {
       console.error('Supabase error, falling back to cache:', error);
       // Fallback to cache
-      const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
+      const cached = await StorageAdapter.getItem(MOTO_ORDERS_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     }
 
     // Update cache
-    await AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(data));
+    await StorageAdapter.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(data));
     return data || [];
   } catch (e) {
     console.error('Error getting moto orders:', e);
     // Fallback to cache
     try {
-      const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
+      const cached = await StorageAdapter.getItem(MOTO_ORDERS_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     } catch {
       return [];

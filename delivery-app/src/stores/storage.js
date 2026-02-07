@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import StorageAdapter from '../lib/storage-adapter';
 
 const MOTO_CLIENTS_CACHE_KEY = '@moto_clients_cache';
 const MOTO_ORDERS_CACHE_KEY = '@moto_orders_cache';
@@ -47,7 +47,7 @@ export async function getMotoClients() {
     if (error) {
       console.error('Supabase error, falling back to cache:', error);
       // Fallback to cache
-      const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
+      const cached = await StorageAdapter.getItem(MOTO_CLIENTS_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     }
 
@@ -55,13 +55,13 @@ export async function getMotoClients() {
     const transformed = (data || []).map(transformClientFromSupabase);
     
     // Update cache
-    await AsyncStorage.setItem(MOTO_CLIENTS_CACHE_KEY, JSON.stringify(transformed));
+    await StorageAdapter.setItem(MOTO_CLIENTS_CACHE_KEY, JSON.stringify(transformed));
     return transformed;
   } catch (e) {
     console.error('Error getting moto clients:', e);
     // Fallback to cache
     try {
-      const cached = await AsyncStorage.getItem(MOTO_CLIENTS_CACHE_KEY);
+      const cached = await StorageAdapter.getItem(MOTO_CLIENTS_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     } catch {
       return [];
@@ -227,7 +227,7 @@ export async function getMotoOrders() {
     if (error) {
       console.error('Supabase error, falling back to cache:', error);
       // Fallback to cache
-      const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
+      const cached = await StorageAdapter.getItem(MOTO_ORDERS_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     }
 
@@ -235,13 +235,13 @@ export async function getMotoOrders() {
     const transformed = (data || []).map(transformOrderFromSupabase);
 
     // Update cache
-    await AsyncStorage.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(transformed));
+    await StorageAdapter.setItem(MOTO_ORDERS_CACHE_KEY, JSON.stringify(transformed));
     return transformed;
   } catch (e) {
     console.error('Error getting moto orders:', e);
     // Fallback to cache
     try {
-      const cached = await AsyncStorage.getItem(MOTO_ORDERS_CACHE_KEY);
+      const cached = await StorageAdapter.getItem(MOTO_ORDERS_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     } catch {
       return [];
@@ -388,7 +388,7 @@ export async function saveMotoOrders(orders) {
 
 export async function getB2BClients() {
   try {
-    const data = await AsyncStorage.getItem(B2B_CLIENTS_KEY);
+    const data = await StorageAdapter.getItem(B2B_CLIENTS_KEY);
     return data ? JSON.parse(data) : [];
   } catch (e) {
     console.error('Error getting B2B clients:', e);
@@ -398,7 +398,7 @@ export async function getB2BClients() {
 
 export async function saveB2BClients(clients) {
   try {
-    await AsyncStorage.setItem(B2B_CLIENTS_KEY, JSON.stringify(clients));
+    await StorageAdapter.setItem(B2B_CLIENTS_KEY, JSON.stringify(clients));
   } catch (e) {
     console.error('Error saving B2B clients:', e);
   }
@@ -432,7 +432,7 @@ export async function deleteB2BClient(clientId) {
 
 export async function getB2BDeliveryList() {
   try {
-    const data = await AsyncStorage.getItem(B2B_DELIVERY_LIST_KEY);
+    const data = await StorageAdapter.getItem(B2B_DELIVERY_LIST_KEY);
     return data ? JSON.parse(data) : [];
   } catch (e) {
     console.error('Error getting B2B delivery list:', e);
@@ -442,7 +442,7 @@ export async function getB2BDeliveryList() {
 
 export async function saveB2BDeliveryList(list) {
   try {
-    await AsyncStorage.setItem(B2B_DELIVERY_LIST_KEY, JSON.stringify(list));
+    await StorageAdapter.setItem(B2B_DELIVERY_LIST_KEY, JSON.stringify(list));
   } catch (e) {
     console.error('Error saving B2B delivery list:', e);
   }
@@ -464,18 +464,18 @@ export async function getAuthUser() {
         mode: user.user_metadata?.mode || 'moto'
       };
     }
-    const cached = await AsyncStorage.getItem(AUTH_USER_KEY);
+    const cached = await StorageAdapter.getItem(AUTH_USER_KEY);
     return cached ? JSON.parse(cached) : null;
   } catch (e) { return null; }
 }
 
 export async function saveAuthUser(user) {
-  await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  await StorageAdapter.setItem(AUTH_USER_KEY, JSON.stringify(user));
 }
 
 export async function logoutUser() {
   await supabase.auth.signOut();
-  await AsyncStorage.removeItem(AUTH_USER_KEY);
+  await StorageAdapter.removeItem(AUTH_USER_KEY);
 }
 
 export async function registerUser(email, password, name, mode) {
@@ -557,7 +557,7 @@ export async function getSharedB2BData() {
   if (!currentUser) return [];
   const shareKey = `@b2b_shared_${currentUser.id}`;
   try {
-    const data = await AsyncStorage.getItem(shareKey);
+    const data = await StorageAdapter.getItem(shareKey);
     return data ? JSON.parse(data) : [];
   } catch (e) { return []; }
 }
@@ -576,7 +576,7 @@ export async function importSharedB2BData(shareIndex) {
 export async function clearSharedB2BData() {
   const currentUser = await getAuthUser();
   if (!currentUser) return;
-  await AsyncStorage.removeItem(`@b2b_shared_${currentUser.id}`);
+  await StorageAdapter.removeItem(`@b2b_shared_${currentUser.id}`);
 }
 
 // ============ ROUTE CACHE (offline) ============
@@ -585,7 +585,7 @@ const ROUTE_CACHE_KEY = '@route_cache';
 
 export async function getCachedRoute(startKey, endKey) {
   try {
-    const data = await AsyncStorage.getItem(ROUTE_CACHE_KEY);
+    const data = await StorageAdapter.getItem(ROUTE_CACHE_KEY);
     const cache = data ? JSON.parse(data) : {};
     const key = `${startKey}_${endKey}`;
     return cache[key] || null;
@@ -594,11 +594,11 @@ export async function getCachedRoute(startKey, endKey) {
 
 export async function cacheRoute(startKey, endKey, routeData) {
   try {
-    const data = await AsyncStorage.getItem(ROUTE_CACHE_KEY);
+    const data = await StorageAdapter.getItem(ROUTE_CACHE_KEY);
     const cache = data ? JSON.parse(data) : {};
     const key = `${startKey}_${endKey}`;
     cache[key] = { ...routeData, cachedAt: Date.now() };
-    await AsyncStorage.setItem(ROUTE_CACHE_KEY, JSON.stringify(cache));
+    await StorageAdapter.setItem(ROUTE_CACHE_KEY, JSON.stringify(cache));
   } catch (e) { /* ignore */ }
 }
 
@@ -608,13 +608,13 @@ const THEME_KEY = '@app_theme';
 
 export async function getAppTheme() {
   try {
-    const data = await AsyncStorage.getItem(THEME_KEY);
+    const data = await StorageAdapter.getItem(THEME_KEY);
     return data || 'system';
   } catch (e) { return 'system'; }
 }
 
 export async function saveAppTheme(theme) {
-  await AsyncStorage.setItem(THEME_KEY, theme);
+  await StorageAdapter.setItem(THEME_KEY, theme);
 }
 
 // ============ DATA EXPORT/IMPORT ============
